@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!--
+      Spring ships no error-code mapping for SQLite, so a constraint violation
+      (e.g. a foreign-key failure) is otherwise surfaced as an opaque
+      UncategorizedSQLException. All SQLite constraint violations (FOREIGN KEY,
+      NOT NULL, UNIQUE, CHECK, ...) share the primary result code 19
+      (SQLITE_CONSTRAINT), so mapping 19 to the data-integrity category lets the
+      JdbcTemplate translate them into Spring's DataIntegrityViolationException.
+      This file is auto-discovered by Spring's SQLErrorCodesFactory on the classpath.
+    -->
+    <bean id="SQLite" class="org.springframework.jdbc.support.SQLErrorCodes">
+        <property name="databaseProductName" value="SQLite"/>
+        <property name="dataIntegrityViolationCodes">
+            <value>19</value>
+        </property>
+    </bean>
+
+</beans>

@@ -7,16 +7,23 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import org.unividuell.mobility.manager.fuel.FuelEntryRepository
+import org.unividuell.mobility.manager.vehicle.VehicleRepository
 
 @SpringBootTest
 @ActiveProfiles("test")
 class AppUserServiceIntegrationTest @Autowired constructor(
     private val service: AppUserService,
     private val repository: AppUserRepository,
+    private val fuelEntries: FuelEntryRepository,
+    private val vehicles: VehicleRepository,
 ) {
 
     @BeforeEach
     fun cleanDb() {
+        // FKs are enforced: clear children before users (fuel -> vehicles -> users)
+        fuelEntries.deleteAll()
+        vehicles.deleteAll()
         repository.deleteAll()
     }
 

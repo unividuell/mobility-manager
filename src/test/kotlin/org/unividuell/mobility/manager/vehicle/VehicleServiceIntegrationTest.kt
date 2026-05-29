@@ -12,21 +12,32 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.server.ResponseStatusException
+import org.unividuell.mobility.manager.fuel.FuelEntryRepository
+import org.unividuell.mobility.manager.user.AppUserRepository
+import org.unividuell.mobility.manager.user.AppUserService
 
 @SpringBootTest
 @ActiveProfiles("test")
 class VehicleServiceIntegrationTest @Autowired constructor(
     private val service: VehicleService,
     private val repository: VehicleRepository,
+    private val fuelEntries: FuelEntryRepository,
+    private val users: AppUserService,
+    private val userRepository: AppUserRepository,
 ) {
 
-    // FK enforcement is off in SQLite, so plain user ids suffice here.
-    private val userA = 1L
-    private val userB = 2L
+    // FKs are enforced, so the manager ids must be real users.
+    private var userA = 0L
+    private var userB = 0L
 
     @BeforeEach
     fun cleanDb() {
+        // dependency order: fuel_entries -> vehicles (cascades vehicle_managers) -> users
+        fuelEntries.deleteAll()
         repository.deleteAll()
+        userRepository.deleteAll()
+        userA = users.upsert(1001L, login = "alice", displayName = "Alice").id!!
+        userB = users.upsert(1002L, login = "bob", displayName = "Bob").id!!
     }
 
     @Test
