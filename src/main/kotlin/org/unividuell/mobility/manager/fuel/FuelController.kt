@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.unividuell.mobility.manager.user.CurrentUser
+import org.unividuell.mobility.manager.vehicle.Vehicle
 import org.unividuell.mobility.manager.vehicle.VehicleService
 
 @Controller
@@ -21,7 +22,8 @@ class FuelController(
 
     @GetMapping
     fun index(@AuthenticationPrincipal principal: OAuth2User, model: Model): String {
-        populatePanel(principal, model, FuelDraft(), saved = null)
+        val vehicles = vehiclesOf(principal)
+        renderPanel(model, vehicles, FuelDraft().withDefaultVehicle(vehicles), saved = null)
         return "index"
     }
 
@@ -36,27 +38,34 @@ class FuelController(
         model: Model,
     ): String {
         val userId = currentUser.require(principal).id!!
-        val current = FuelDraft(liters, pricePerLiter, kilometers, vehicleId)
+        val vehicles = vehicleService.listFor(userId)
+        val current = FuelDraft(liters, pricePerLiter, kilometers, vehicleId).withDefaultVehicle(vehicles)
 
         when (val result = service.applyValue(current, value) { query -> vehicleService.resolve(userId, query)?.id }) {
             is FuelService.DraftResult.Completed ->
-                populatePanel(principal, model, FuelDraft(), saved = result.saved)
+                renderPanel(model, vehicles, FuelDraft().withDefaultVehicle(vehicles), saved = result.saved)
             is FuelService.DraftResult.Pending ->
-                populatePanel(principal, model, result.draft, saved = null)
+                renderPanel(model, vehicles, result.draft, saved = null)
         }
         return "fragments/panel :: panel"
     }
 
     @PostMapping("/fuel/reset")
     fun reset(@AuthenticationPrincipal principal: OAuth2User, model: Model): String {
-        populatePanel(principal, model, FuelDraft(), saved = null)
+        val vehicles = vehiclesOf(principal)
+        renderPanel(model, vehicles, FuelDraft().withDefaultVehicle(vehicles), saved = null)
         return "fragments/panel :: panel"
     }
 
+    private fun vehiclesOf(principal: OAuth2User): List<Vehicle> =
+        vehicleService.listFor(currentUser.require(principal).id!!)
+
+    /** When the user owns exactly one vehicle, it is pre-selected so a fuel entry needs only the three numbers. */
+    private fun FuelDraft.withDefaultVehicle(vehicles: List<Vehicle>): FuelDraft =
+        if (vehicleId == null && vehicles.size == 1) copy(vehicleId = vehicles.single().id) else this
+
     /** Shared model for the swappable panel: vehicles for the picker, the draft, and any saved entry. */
-    private fun populatePanel(principal: OAuth2User, model: Model, draft: FuelDraft, saved: FuelEntry?) {
-        val userId = currentUser.require(principal).id!!
-        val vehicles = vehicleService.listFor(userId)
+    private fun renderPanel(model: Model, vehicles: List<Vehicle>, draft: FuelDraft, saved: FuelEntry?) {
         model.addAttribute("vehicles", vehicles)
         model.addAttribute("draft", draft)
         model.addAttribute("saved", saved)

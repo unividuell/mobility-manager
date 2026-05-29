@@ -91,49 +91,52 @@ class FuelControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `a vehicle is matched from the same input by substring and fills the vehicle slot`() {
+    fun `the only vehicle is preselected, so three numbers complete the entry`() {
         val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
 
-        // typing a substring of the vehicle name resolves it
-        val body = postValue(value = "omb")
+        // the sole vehicle is already picked on a fresh panel
+        val panel = mockMvc.get("/") { with(login()) }.andReturn().response.contentAsString
+        panel shouldContain """name="vehicleId" value="$vehicleId""""
+        panel shouldContain "Kombi"
 
-        body shouldContain """name="vehicleId" value="$vehicleId""""
-        body shouldContain "Kombi"
-    }
+        postValue(value = "42.5")
+        postValue(value = "680", liters = "42.5")
+        withClue("no save yet — only two numbers") { repository.count() shouldBe 0 }
 
-    @Test
-    fun `random-order entry plus a vehicle produces a complete entry and persists it`() {
-        val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
-
-        // 1) liters
-        var body = postValue(value = "42.5")
-        body shouldContain """name="liters" value="42.5""""
-        withClue("no save yet — draft incomplete") { repository.count() shouldBe 0 }
-
-        // 2) kilometers
-        body = postValue(value = "680", liters = "42.5")
-        body shouldContain """name="kilometers" value="680.0""""
-        repository.count() shouldBe 0
-
-        // 3) price — three numbers, but still no vehicle → not saved yet
-        body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
-        body shouldContain """data-testid="draft-panel""""
-        repository.count() shouldBe 0
-
-        // 4) vehicle (substring) completes the entry
-        body = postValue(value = "omb", liters = "42.5", pricePerLiter = "1.749", kilometers = "680.0")
+        // third number completes it; no vehicle entry needed
+        val body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
 
         body shouldContain """data-testid="result-panel""""
         body shouldContain "6.25"     // 42.5 / 680 * 100
-        body shouldContain "74.33"    // 42.5 * 1.749
         body shouldContain "Kombi"
 
         repository.count() shouldBe 1
-        val saved = repository.findAll().single()
-        saved.vehicleId shouldBe vehicleId
-        saved.liters shouldBe 42.5
-        saved.pricePerLiter shouldBe 1.749
-        saved.kilometers shouldBe 680.0
+        repository.findAll().single().vehicleId shouldBe vehicleId
+    }
+
+    @Test
+    fun `with several vehicles none is preselected and the substring-typed one is linked`() {
+        val kombi = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+        vehicleService.create(userId, "Roadster", "#f43f5e")
+
+        // multiple vehicles → nothing preselected
+        val panel = mockMvc.get("/") { with(login()) }.andReturn().response.contentAsString
+        panel shouldContain """name="vehicleId" value="""""
+
+        postValue(value = "42.5")
+        postValue(value = "680", liters = "42.5")
+        // three numbers but no vehicle yet → still a draft, not saved
+        var body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
+        body shouldContain """data-testid="draft-panel""""
+        repository.count() shouldBe 0
+
+        // a substring resolves the right vehicle and completes the entry
+        body = postValue(value = "omb", liters = "42.5", pricePerLiter = "1.749", kilometers = "680.0")
+
+        body shouldContain """data-testid="result-panel""""
+        body shouldContain "Kombi"
+        repository.count() shouldBe 1
+        repository.findAll().single().vehicleId shouldBe kombi
     }
 
     @Test
