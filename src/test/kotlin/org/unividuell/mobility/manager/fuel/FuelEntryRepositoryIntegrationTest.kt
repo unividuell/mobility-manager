@@ -1,12 +1,15 @@
 package org.unividuell.mobility.manager.fuel
 
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.comparables.shouldBeGreaterThan
+import io.kotest.matchers.doubles.plusOrMinus
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 @SpringBootTest
 class FuelEntryRepositoryIntegrationTest @Autowired constructor(
@@ -28,13 +31,13 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
             )
         )
 
-        assertNotNull(saved.id)
-        assertTrue(saved.id!! > 0)
+        val id = saved.id.shouldNotBeNull()
+        id shouldBeGreaterThan 0L
 
-        val loaded = repository.findById(saved.id!!).orElseThrow()
-        assertEquals(42.5, loaded.liters)
-        assertEquals(1.749, loaded.pricePerLiter)
-        assertEquals(680.0, loaded.kilometers)
+        val loaded = repository.findById(id).orElseThrow()
+        loaded.liters shouldBe 42.5
+        loaded.pricePerLiter shouldBe 1.749
+        loaded.kilometers shouldBe 680.0
     }
 
     @Test
@@ -44,8 +47,8 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
         )
 
         val loaded = repository.findById(saved.id!!).orElseThrow()
-        assertEquals(45.32 / 520.0 * 100.0, loaded.consumptionPer100Km, 1e-9)
-        assertEquals(45.32 * 1.859, loaded.totalCost, 1e-9)
+        loaded.consumptionPer100Km shouldBe (45.32 / 520.0 * 100.0).plusOrMinus(1e-9)
+        loaded.totalCost shouldBe (45.32 * 1.859).plusOrMinus(1e-9)
     }
 
     @Test
@@ -55,19 +58,16 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
         repository.save(FuelEntry(liters = 35.0, pricePerLiter = 1.9, kilometers = 450.0))
 
         val all = repository.findAll().toList()
-        assertEquals(3, all.size)
-        assertEquals(
-            setOf(40.0, 50.0, 35.0),
-            all.map { it.liters }.toSet(),
-        )
+        all shouldHaveSize 3
+        all.map { it.liters } shouldContainExactlyInAnyOrder listOf(40.0, 50.0, 35.0)
     }
 
     @Test
     fun `deleteAll removes everything`() {
         repository.save(FuelEntry(liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
-        assertEquals(1, repository.count())
+        repository.count() shouldBe 1
 
         repository.deleteAll()
-        assertEquals(0, repository.count())
+        repository.count() shouldBe 0
     }
 }

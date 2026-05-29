@@ -1,60 +1,137 @@
 <!DOCTYPE html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
 <body>
-<section th:fragment="panel" id="panel">
 
-    <div th:if="${saved != null}" class="result" th:object="${saved}">
-        <div class="result-headline">
-            <span class="result-value" th:text="${#numbers.formatDecimal(saved.consumptionPer100Km, 1, 'POINT', 2, 'POINT')}">0.00</span>
-            <span class="result-unit">L / 100 km</span>
+<!--
+  Single swappable panel. Two states:
+    saved == null  → draft mode (slot tiles + giant number input)
+    saved != null  → result mode (hero L/100km figure + meta grid + reset)
+-->
+<section th:fragment="panel" id="panel" class="flex h-full flex-col gap-4">
+
+    <!-- ============================================================ -->
+    <!-- Result state                                                  -->
+    <!-- ============================================================ -->
+    <div th:if="${saved != null}"
+         data-testid="result-panel"
+         class="flex h-full flex-col gap-6 rounded-2xl bg-emerald-950/40 p-6"
+         th:object="${saved}">
+
+        <div class="flex flex-1 flex-col items-center justify-center gap-1 text-center">
+            <span class="text-7xl font-extrabold tabular-nums tracking-tight text-emerald-400 sm:text-8xl"
+                  th:text="${#numbers.formatDecimal(saved.consumptionPer100Km, 1, 'POINT', 2, 'POINT')}">8.72</span>
+            <span class="text-base text-zinc-400 sm:text-lg">L / 100 km</span>
         </div>
-        <dl class="result-meta">
-            <div><dt>Getankt</dt><dd th:text="${#numbers.formatDecimal(saved.liters, 1, 'POINT', 2, 'POINT') + ' L'}"></dd></div>
-            <div><dt>Preis</dt><dd th:text="${#numbers.formatDecimal(saved.pricePerLiter, 1, 'POINT', 3, 'POINT') + ' €/L'}"></dd></div>
-            <div><dt>Strecke</dt><dd th:text="${#numbers.formatDecimal(saved.kilometers, 1, 'POINT', 1, 'POINT') + ' km'}"></dd></div>
-            <div><dt>Kosten</dt><dd th:text="${#numbers.formatDecimal(saved.totalCost, 1, 'POINT', 2, 'POINT') + ' €'}"></dd></div>
+
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-left">
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-zinc-500">Getankt</dt>
+                <dd class="text-lg font-semibold tabular-nums sm:text-xl"
+                    th:text="${#numbers.formatDecimal(saved.liters, 1, 'POINT', 2, 'POINT') + ' L'}">45.32 L</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-zinc-500">Preis</dt>
+                <dd class="text-lg font-semibold tabular-nums sm:text-xl"
+                    th:text="${#numbers.formatDecimal(saved.pricePerLiter, 1, 'POINT', 3, 'POINT') + ' €/L'}">1.859 €/L</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-zinc-500">Strecke</dt>
+                <dd class="text-lg font-semibold tabular-nums sm:text-xl"
+                    th:text="${#numbers.formatDecimal(saved.kilometers, 1, 'POINT', 1, 'POINT') + ' km'}">520.0 km</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-zinc-500">Kosten</dt>
+                <dd class="text-lg font-semibold tabular-nums sm:text-xl"
+                    th:text="${#numbers.formatDecimal(saved.totalCost, 1, 'POINT', 2, 'POINT') + ' €'}">84.25 €</dd>
+            </div>
         </dl>
-        <form hx-post="/fuel/reset" hx-target="#panel" hx-swap="outerHTML">
-            <button type="submit" class="reset-btn">Nächste Tankung</button>
+
+        <form hx-post="/fuel/reset" hx-target="#panel" hx-swap="outerHTML" class="mt-auto">
+            <button type="submit"
+                    class="w-full rounded-xl bg-emerald-500 px-4 py-4 text-base font-semibold text-emerald-950
+                           transition active:scale-[0.98] hover:bg-emerald-400
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300">
+                Nächste Tankung
+            </button>
         </form>
     </div>
 
-    <div th:if="${saved == null}" class="draft">
-        <div class="slots">
-            <div th:classappend="${draft.liters != null} ? 'slot filled' : 'slot empty'">
-                <span class="slot-label">Liter</span>
-                <span class="slot-value"
-                      th:text="${draft.liters != null} ? ${#numbers.formatDecimal(draft.liters, 1, 'POINT', 2, 'POINT')} : '—'">—</span>
+    <!-- ============================================================ -->
+    <!-- Draft state                                                   -->
+    <!-- ============================================================ -->
+    <div th:if="${saved == null}"
+         data-testid="draft-panel"
+         class="flex h-full flex-col gap-4">
+
+        <div class="flex flex-col gap-2">
+
+            <div data-testid="slot"
+                 th:attr="data-filled=${draft.liters != null}"
+                 th:classappend="${draft.liters != null}
+                    ? 'border-cyan-400 bg-zinc-900'
+                    : 'border-transparent bg-zinc-900/60'"
+                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
+                <span class="text-sm text-zinc-400">Liter</span>
+                <span th:classappend="${draft.liters != null} ? 'text-zinc-100' : 'text-zinc-600'"
+                      class="text-2xl font-semibold tabular-nums"
+                      th:text="${draft.liters != null}
+                         ? ${#numbers.formatDecimal(draft.liters, 1, 'POINT', 2, 'POINT')}
+                         : '—'">—</span>
             </div>
-            <div th:classappend="${draft.pricePerLiter != null} ? 'slot filled' : 'slot empty'">
-                <span class="slot-label">€/Liter</span>
-                <span class="slot-value"
-                      th:text="${draft.pricePerLiter != null} ? ${#numbers.formatDecimal(draft.pricePerLiter, 1, 'POINT', 3, 'POINT')} : '—'">—</span>
+
+            <div data-testid="slot"
+                 th:attr="data-filled=${draft.pricePerLiter != null}"
+                 th:classappend="${draft.pricePerLiter != null}
+                    ? 'border-cyan-400 bg-zinc-900'
+                    : 'border-transparent bg-zinc-900/60'"
+                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
+                <span class="text-sm text-zinc-400">€/Liter</span>
+                <span th:classappend="${draft.pricePerLiter != null} ? 'text-zinc-100' : 'text-zinc-600'"
+                      class="text-2xl font-semibold tabular-nums"
+                      th:text="${draft.pricePerLiter != null}
+                         ? ${#numbers.formatDecimal(draft.pricePerLiter, 1, 'POINT', 3, 'POINT')}
+                         : '—'">—</span>
             </div>
-            <div th:classappend="${draft.kilometers != null} ? 'slot filled' : 'slot empty'">
-                <span class="slot-label">Kilometer</span>
-                <span class="slot-value"
-                      th:text="${draft.kilometers != null} ? ${#numbers.formatDecimal(draft.kilometers, 1, 'POINT', 1, 'POINT')} : '—'">—</span>
+
+            <div data-testid="slot"
+                 th:attr="data-filled=${draft.kilometers != null}"
+                 th:classappend="${draft.kilometers != null}
+                    ? 'border-cyan-400 bg-zinc-900'
+                    : 'border-transparent bg-zinc-900/60'"
+                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
+                <span class="text-sm text-zinc-400">Kilometer</span>
+                <span th:classappend="${draft.kilometers != null} ? 'text-zinc-100' : 'text-zinc-600'"
+                      class="text-2xl font-semibold tabular-nums"
+                      th:text="${draft.kilometers != null}
+                         ? ${#numbers.formatDecimal(draft.kilometers, 1, 'POINT', 1, 'POINT')}
+                         : '—'">—</span>
             </div>
+
         </div>
 
         <form hx-post="/fuel/value"
               hx-target="#panel"
               hx-swap="outerHTML"
-              hx-on::after-request="this.reset(); this.querySelector('input[name=value]').focus()">
+              hx-on::after-request="this.reset(); this.querySelector('input[name=value]').focus()"
+              class="mt-auto">
             <input type="hidden" name="liters" th:value="${draft.liters}">
             <input type="hidden" name="pricePerLiter" th:value="${draft.pricePerLiter}">
             <input type="hidden" name="kilometers" th:value="${draft.kilometers}">
-            <input class="value-input"
-                   name="value"
+            <input data-testid="value-input"
                    type="text"
+                   name="value"
                    inputmode="decimal"
                    autocomplete="off"
                    autofocus
                    required
                    pattern="[0-9]+([.,][0-9]+)?"
-                   placeholder="0">
+                   placeholder="0"
+                   class="w-full border-b-4 border-cyan-400 bg-transparent py-4 text-center
+                          text-7xl font-bold tabular-nums tracking-tight text-zinc-100
+                          caret-cyan-400 outline-none placeholder:text-zinc-800
+                          sm:text-8xl">
         </form>
+
     </div>
 
 </section>
