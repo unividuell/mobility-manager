@@ -14,12 +14,15 @@ import org.springframework.test.context.ActiveProfiles
  * Proves that HTTP sessions are persisted to SQLite (spring-session-jdbc), which is
  * what lets a logged-in user survive an app restart. A session attribute is written
  * as a BLOB and read back through a fresh repository query.
+ *
+ * We work through the [SessionRepository] interface: the wired bean is
+ * JdbcIndexedSessionRepository whose JdbcSession type is package-private and so
+ * can't be named in Kotlin. The generic helper captures the repository's session
+ * type from the `*` projection.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class SpringSessionPersistenceIntegrationTest @Autowired constructor(
-    // the wired bean is JdbcIndexedSessionRepository whose JdbcSession type is
-    // package-private, so we work through the SessionRepository interface
     private val sessions: SessionRepository<*>,
 ) {
 
