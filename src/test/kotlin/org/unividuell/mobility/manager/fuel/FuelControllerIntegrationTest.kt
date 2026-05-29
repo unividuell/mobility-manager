@@ -10,11 +10,13 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class FuelControllerIntegrationTest @Autowired constructor(
     private val mockMvc: MockMvc,
     private val repository: FuelEntryRepository,

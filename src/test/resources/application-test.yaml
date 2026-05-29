@@ -1,0 +1,10 @@
+# Test-only overrides; everything else (datasource driver, flyway, thymeleaf,
+# the GitHub OAuth2 client registration with its placeholder creds) is inherited
+# from the base src/main/resources/application.yaml. Activated via @ActiveProfiles("test").
+spring:
+  datasource:
+    # SQLite in-memory with shared cache so Hikari's pool sees one DB.
+    # Pool size pinned to 1 because SQLite is single-writer anyway.
+    url: jdbc:sqlite:file::memory:?cache=shared
+    hikari:
+      maximum-pool-size: 1
