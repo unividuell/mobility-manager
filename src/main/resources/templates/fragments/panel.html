@@ -21,10 +21,11 @@
             <span class="text-7xl font-extrabold tabular-nums tracking-tight text-emerald-400 sm:text-8xl"
                   th:text="${#numbers.formatDecimal(saved.consumptionPer100Km, 1, 'POINT', 2, 'POINT')}">8.72</span>
             <span class="text-base text-zinc-400 sm:text-lg">L / 100 km</span>
-            <span th:if="${pickedVehicle != null}" class="mt-2 flex items-center gap-2 text-sm text-zinc-400">
-                <span class="h-3 w-3 rounded-full ring-1 ring-white/10"
+            <span class="mt-2 flex items-center gap-2 text-sm text-zinc-400">
+                <span th:if="${pickedVehicle != null}" class="h-3 w-3 rounded-full ring-1 ring-white/10"
                       th:style="'background-color:' + ${pickedVehicle.color}"></span>
-                <span th:text="${pickedVehicle.name}">Kombi</span>
+                <span th:if="${pickedVehicle != null}" th:text="${pickedVehicle.name}">Kombi</span>
+                <span th:if="${dateDisplay != null}" th:text="${pickedVehicle != null} ? '· ' + ${dateDisplay} : ${dateDisplay}">· 20.05.2026</span>
             </span>
         </div>
 
@@ -129,6 +130,19 @@
                 </span>
             </div>
 
+            <!-- 5th slot: the date, defaulting to today; override by typing one (e.g. 20.05.2026) -->
+            <div data-testid="slot"
+                 th:attr="data-filled=${draft.date != null}"
+                 th:classappend="${draft.date != null}
+                    ? 'border-cyan-400 bg-zinc-900'
+                    : 'border-transparent bg-zinc-900/60'"
+                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
+                <span class="text-sm text-zinc-400">Datum</span>
+                <span th:classappend="${draft.date != null} ? 'text-zinc-100' : 'text-zinc-600'"
+                      class="text-2xl font-semibold tabular-nums"
+                      th:text="${dateDisplay != null} ? ${dateDisplay} : '—'">—</span>
+            </div>
+
         </div>
 
         <!-- No vehicles yet: a fuel entry can't be completed without one. -->
@@ -146,6 +160,7 @@
             <input type="hidden" name="pricePerLiter" th:value="${draft.pricePerLiter}">
             <input type="hidden" name="kilometers" th:value="${draft.kilometers}">
             <input type="hidden" name="vehicleId" th:value="${draft.vehicleId}">
+            <input type="hidden" name="date" th:value="${draft.date}">
             <input data-testid="value-input"
                    type="text"
                    name="value"

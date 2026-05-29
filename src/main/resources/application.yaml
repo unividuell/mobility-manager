@@ -10,7 +10,9 @@ spring:
             client-secret: ${GITHUB_CLIENT_SECRET}
             scope: read:user
   datasource:
-    url: jdbc:sqlite:./data/mobility-manager.db
+    # date_class=text + an ISO date format make the driver store java.time
+    # dates (FuelEntry.date) as readable yyyy-MM-dd TEXT instead of epoch millis.
+    url: jdbc:sqlite:./data/mobility-manager.db?date_class=text&date_string_format=yyyy-MM-dd
     driver-class-name: org.sqlite.JDBC
   sql:
     init:

@@ -7,6 +7,7 @@ spring:
     # (the shared in-memory DB lives as long as >=1 connection stays open).
     # Pool > 1 is required: loading an aggregate that owns a child collection
     # (Vehicle -> vehicle_managers) needs a second connection concurrently.
-    url: jdbc:sqlite:file::memory:?cache=shared
+    # date_class=text mirrors prod so LocalDate persists as readable ISO TEXT.
+    url: jdbc:sqlite:file::memory:?cache=shared&date_class=text&date_string_format=yyyy-MM-dd
     hikari:
       maximum-pool-size: 5

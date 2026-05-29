@@ -1,5 +1,6 @@
 package org.unividuell.mobility.manager.fuel
 
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.unividuell.mobility.manager.user.CurrentUser
 import org.unividuell.mobility.manager.vehicle.Vehicle
 import org.unividuell.mobility.manager.vehicle.VehicleService
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Controller
 @RequestMapping("/")
@@ -23,7 +26,7 @@ class FuelController(
     @GetMapping
     fun index(@AuthenticationPrincipal principal: OAuth2User, model: Model): String {
         val vehicles = vehiclesOf(principal)
-        renderPanel(model, vehicles, FuelDraft().withDefaultVehicle(vehicles), saved = null)
+        renderPanel(model, vehicles, FuelDraft().withDefaults(vehicles), saved = null)
         return "index"
     }
 
@@ -35,15 +38,16 @@ class FuelController(
         @RequestParam(required = false) pricePerLiter: Double?,
         @RequestParam(required = false) kilometers: Double?,
         @RequestParam(required = false) vehicleId: Long?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate?,
         model: Model,
     ): String {
         val userId = currentUser.require(principal).id!!
         val vehicles = vehicleService.listFor(userId)
-        val current = FuelDraft(liters, pricePerLiter, kilometers, vehicleId).withDefaultVehicle(vehicles)
+        val current = FuelDraft(liters, pricePerLiter, kilometers, vehicleId, date).withDefaults(vehicles)
 
         when (val result = service.applyValue(current, value) { query -> vehicleService.resolve(userId, query)?.id }) {
             is FuelService.DraftResult.Completed ->
-                renderPanel(model, vehicles, FuelDraft().withDefaultVehicle(vehicles), saved = result.saved)
+                renderPanel(model, vehicles, FuelDraft().withDefaults(vehicles), saved = result.saved)
             is FuelService.DraftResult.Pending ->
                 renderPanel(model, vehicles, result.draft, saved = null)
         }
@@ -53,24 +57,38 @@ class FuelController(
     @PostMapping("/fuel/reset")
     fun reset(@AuthenticationPrincipal principal: OAuth2User, model: Model): String {
         val vehicles = vehiclesOf(principal)
-        renderPanel(model, vehicles, FuelDraft().withDefaultVehicle(vehicles), saved = null)
+        renderPanel(model, vehicles, FuelDraft().withDefaults(vehicles), saved = null)
         return "fragments/panel :: panel"
     }
 
     private fun vehiclesOf(principal: OAuth2User): List<Vehicle> =
         vehicleService.listFor(currentUser.require(principal).id!!)
 
-    /** When the user owns exactly one vehicle, it is pre-selected so a fuel entry needs only the three numbers. */
-    private fun FuelDraft.withDefaultVehicle(vehicles: List<Vehicle>): FuelDraft =
-        if (vehicleId == null && vehicles.size == 1) copy(vehicleId = vehicles.single().id) else this
+    /**
+     * Pre-fills the parts the user shouldn't have to type: the date defaults to
+     * today, and a sole vehicle is pre-selected so a fuel entry needs only the
+     * three numbers.
+     */
+    private fun FuelDraft.withDefaults(vehicles: List<Vehicle>): FuelDraft {
+        var draft = this
+        if (draft.date == null) draft = draft.copy(date = LocalDate.now())
+        if (draft.vehicleId == null && vehicles.size == 1) draft = draft.copy(vehicleId = vehicles.single().id)
+        return draft
+    }
 
-    /** Shared model for the swappable panel: vehicles for the picker, the draft, and any saved entry. */
+    /** Shared model for the swappable panel: vehicles for the picker, the draft/entry, and display helpers. */
     private fun renderPanel(model: Model, vehicles: List<Vehicle>, draft: FuelDraft, saved: FuelEntry?) {
         model.addAttribute("vehicles", vehicles)
         model.addAttribute("draft", draft)
         model.addAttribute("saved", saved)
-        // the vehicle currently picked in the draft / linked to the saved entry, for display
+        // the vehicle/date currently picked in the draft or linked to the saved entry, for display
         val pickedId = saved?.vehicleId ?: draft.vehicleId
         model.addAttribute("pickedVehicle", vehicles.firstOrNull { it.id == pickedId })
+        val pickedDate = saved?.date ?: draft.date
+        model.addAttribute("dateDisplay", pickedDate?.format(GERMAN_DATE))
+    }
+
+    private companion object {
+        val GERMAN_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     }
 }

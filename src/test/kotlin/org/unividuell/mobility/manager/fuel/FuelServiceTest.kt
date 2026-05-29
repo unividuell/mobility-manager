@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 
 /**
  * Unit test for [FuelService]. Plain JUnit 5 (grouped with [Nested] classes),
@@ -154,10 +155,12 @@ class FuelServiceTest {
         fun `completes and persists when the vehicle is the last missing piece`() {
             val repository = mockk<FuelEntryRepository>()
             val service = newService(repository)
-            val draft = FuelDraft(liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0)
+            val date = LocalDate.of(2026, 1, 1)
+            val draft = FuelDraft(liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0, date = date)
             val persisted = FuelEntry(
                 id = 9L,
                 vehicleId = 3L,
+                date = date,
                 liters = 42.5,
                 pricePerLiter = 1.749,
                 kilometers = 680.0,
@@ -169,7 +172,72 @@ class FuelServiceTest {
             result shouldBe FuelService.DraftResult.Completed(persisted)
             verify(exactly = 1) {
                 repository.save(
-                    FuelEntry(vehicleId = 3L, liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0),
+                    FuelEntry(vehicleId = 3L, date = date, liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0),
+                )
+            }
+            confirmVerified(repository)
+        }
+    }
+
+    @Nested
+    inner class DateMatching {
+
+        @Test
+        fun `matches an ISO date and fills the date slot`() {
+            val service = newService(mockk(relaxed = true))
+
+            val result = service.applyValue(FuelDraft(), "2026-05-20", noVehicle)
+
+            result shouldBe FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(2026, 5, 20)))
+        }
+
+        @Test
+        fun `matches a german day-first date and fills the date slot`() {
+            val service = newService(mockk(relaxed = true))
+
+            val result = service.applyValue(FuelDraft(), "20.05.2026", noVehicle)
+
+            result shouldBe FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(2026, 5, 20)))
+        }
+
+        @Test
+        fun `accepts a two-digit year, mapping it into the last 99 years`() {
+            val service = newService(mockk(relaxed = true))
+
+            // run-year is 2026: 26 → 2026, 99 → 1999
+            service.applyValue(FuelDraft(), "20.5.26", noVehicle) shouldBe
+                FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(2026, 5, 20)))
+            service.applyValue(FuelDraft(), "20.5.99", noVehicle) shouldBe
+                FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(1999, 5, 20)))
+        }
+
+        @Test
+        fun `completes and persists when the date is the last missing piece`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            val draft = FuelDraft(liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0, vehicleId = 3L)
+            val persisted = FuelEntry(
+                id = 11L,
+                vehicleId = 3L,
+                date = LocalDate.of(2026, 5, 20),
+                liters = 42.5,
+                pricePerLiter = 1.749,
+                kilometers = 680.0,
+            )
+            every { repository.save(any()) } returns persisted
+
+            val result = service.applyValue(draft, "20.05.2026", noVehicle)
+
+            result shouldBe FuelService.DraftResult.Completed(persisted)
+            verify(exactly = 1) {
+                repository.save(
+                    FuelEntry(
+                        vehicleId = 3L,
+                        date = LocalDate.of(2026, 5, 20),
+                        liters = 42.5,
+                        pricePerLiter = 1.749,
+                        kilometers = 680.0,
+                    ),
                 )
             }
             confirmVerified(repository)
@@ -183,10 +251,12 @@ class FuelServiceTest {
         fun `persists the entry and returns Completed when the last number lands`() {
             val repository = mockk<FuelEntryRepository>()
             val service = newService(repository)
-            val draft = FuelDraft(liters = 42.5, pricePerLiter = 1.749, vehicleId = 3L)
+            val date = LocalDate.of(2026, 1, 1)
+            val draft = FuelDraft(liters = 42.5, pricePerLiter = 1.749, vehicleId = 3L, date = date)
             val persisted = FuelEntry(
                 id = 7L,
                 vehicleId = 3L,
+                date = date,
                 liters = 42.5,
                 pricePerLiter = 1.749,
                 kilometers = 680.0,
@@ -198,7 +268,7 @@ class FuelServiceTest {
             result shouldBe FuelService.DraftResult.Completed(persisted)
             verify(exactly = 1) {
                 repository.save(
-                    FuelEntry(vehicleId = 3L, liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0),
+                    FuelEntry(vehicleId = 3L, date = date, liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0),
                 )
             }
             confirmVerified(repository)

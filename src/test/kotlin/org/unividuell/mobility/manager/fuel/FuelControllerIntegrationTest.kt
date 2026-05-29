@@ -18,6 +18,7 @@ import org.unividuell.mobility.manager.user.AppUserRepository
 import org.unividuell.mobility.manager.user.AppUserService
 import org.unividuell.mobility.manager.vehicle.VehicleRepository
 import org.unividuell.mobility.manager.vehicle.VehicleService
+import java.time.LocalDate
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -45,13 +46,15 @@ class FuelControllerIntegrationTest @Autowired constructor(
     private fun login(): RequestPostProcessor = oauth2Login().attributes { it["id"] = githubId }
 
     @Test
-    fun `GET root renders empty draft panel with four empty slots`() {
+    fun `GET root renders empty draft panel with five slots, date prefilled to today`() {
         val body = mockMvc.get("/") { with(login()) }.andReturn().response.contentAsString
 
-        // four slot tiles (liter, €/liter, km, vehicle) + the input form
-        body.occurrencesOf("""data-testid="slot"""") shouldBe 4
+        // five slot tiles (liter, €/liter, km, vehicle, date) + the input form
+        body.occurrencesOf("""data-testid="slot"""") shouldBe 5
+        // four are empty; the date slot is prefilled with today
         body.occurrencesOf(">—<") shouldBe 4
         body shouldContain """data-testid="draft-panel""""
+        body shouldContain """name="date" value="${LocalDate.now()}""""
         body shouldContainAll listOf(
             """name="liters" value=""""",
             """name="pricePerLiter" value=""""",
@@ -111,7 +114,30 @@ class FuelControllerIntegrationTest @Autowired constructor(
         body shouldContain "Kombi"
 
         repository.count() shouldBe 1
-        repository.findAll().single().vehicleId shouldBe vehicleId
+        val saved = repository.findAll().single()
+        saved.vehicleId shouldBe vehicleId
+        saved.date shouldBe LocalDate.now()   // date defaulted to today
+    }
+
+    @Test
+    fun `a typed past date overrides today's default and is persisted`() {
+        val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+
+        // type the date first (German format) — it overrides today's default
+        var body = postValue(value = "20.05.2026")
+        body shouldContain """name="date" value="2026-05-20""""
+        body shouldContain "20.05.2026"
+
+        // then the three numbers; the sole vehicle is preselected → completes
+        postValue(value = "42.5", date = "2026-05-20")
+        postValue(value = "680", liters = "42.5", date = "2026-05-20")
+        body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0", date = "2026-05-20")
+
+        body shouldContain """data-testid="result-panel""""
+        repository.count() shouldBe 1
+        val saved = repository.findAll().single()
+        saved.vehicleId shouldBe vehicleId
+        saved.date shouldBe LocalDate.of(2026, 5, 20)
     }
 
     @Test
@@ -181,6 +207,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
         pricePerLiter: String = "",
         kilometers: String = "",
         vehicleId: String = "",
+        date: String = "",
     ): String = mockMvc.post("/fuel/value") {
         with(login())
         param("value", value)
@@ -188,6 +215,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
         param("pricePerLiter", pricePerLiter)
         param("kilometers", kilometers)
         param("vehicleId", vehicleId)
+        param("date", date)
     }.andReturn().response.contentAsString
 
     // ---- tiny local helpers built on top of kotest matchers ----

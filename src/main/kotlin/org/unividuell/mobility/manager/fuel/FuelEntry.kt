@@ -2,11 +2,13 @@ package org.unividuell.mobility.manager.fuel
 
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
+import java.time.LocalDate
 
 @Table("fuel_entries")
 data class FuelEntry(
     @Id val id: Long? = null,
     val vehicleId: Long,
+    val date: LocalDate,
     val liters: Double,
     val pricePerLiter: Double,
     val kilometers: Double,

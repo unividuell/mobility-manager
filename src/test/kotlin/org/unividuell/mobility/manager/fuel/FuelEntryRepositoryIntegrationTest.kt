@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import java.time.LocalDate
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -28,6 +29,7 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
         val saved = repository.save(
             FuelEntry(
                 vehicleId = 1L,
+                date = LocalDate.of(2026, 5, 20),
                 liters = 42.5,
                 pricePerLiter = 1.749,
                 kilometers = 680.0,
@@ -38,6 +40,8 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
         id shouldBeGreaterThan 0L
 
         val loaded = repository.findById(id).orElseThrow()
+        loaded.vehicleId shouldBe 1L
+        loaded.date shouldBe LocalDate.of(2026, 5, 20)   // LocalDate round-trips through the TEXT column
         loaded.liters shouldBe 42.5
         loaded.pricePerLiter shouldBe 1.749
         loaded.kilometers shouldBe 680.0
@@ -46,7 +50,7 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
     @Test
     fun `computed consumption per 100km matches formula`() {
         val saved = repository.save(
-            FuelEntry(vehicleId = 1L, liters = 45.32, pricePerLiter = 1.859, kilometers = 520.0)
+            FuelEntry(vehicleId = 1L, date = LocalDate.of(2026, 5, 20), liters = 45.32, pricePerLiter = 1.859, kilometers = 520.0)
         )
 
         val loaded = repository.findById(saved.id!!).orElseThrow()
@@ -56,9 +60,9 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
 
     @Test
     fun `multiple entries can coexist and be enumerated`() {
-        repository.save(FuelEntry(vehicleId = 1L, liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
-        repository.save(FuelEntry(vehicleId = 1L, liters = 50.0, pricePerLiter = 1.8, kilometers = 600.0))
-        repository.save(FuelEntry(vehicleId = 1L, liters = 35.0, pricePerLiter = 1.9, kilometers = 450.0))
+        repository.save(FuelEntry(vehicleId = 1L, date = LocalDate.of(2026, 5, 20), liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
+        repository.save(FuelEntry(vehicleId = 1L, date = LocalDate.of(2026, 5, 20), liters = 50.0, pricePerLiter = 1.8, kilometers = 600.0))
+        repository.save(FuelEntry(vehicleId = 1L, date = LocalDate.of(2026, 5, 20), liters = 35.0, pricePerLiter = 1.9, kilometers = 450.0))
 
         val all = repository.findAll().toList()
         all shouldHaveSize 3
@@ -67,7 +71,7 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
 
     @Test
     fun `deleteAll removes everything`() {
-        repository.save(FuelEntry(vehicleId = 1L, liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
+        repository.save(FuelEntry(vehicleId = 1L, date = LocalDate.of(2026, 5, 20), liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
         repository.count() shouldBe 1
 
         repository.deleteAll()
