@@ -9,10 +9,15 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login
-import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.request.RequestPostProcessor
+import org.unividuell.mobility.manager.user.AppUserRepository
+import org.unividuell.mobility.manager.user.AppUserService
+import org.unividuell.mobility.manager.vehicle.VehicleRepository
+import org.unividuell.mobility.manager.vehicle.VehicleService
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -20,20 +25,32 @@ import org.springframework.test.web.servlet.post
 class FuelControllerIntegrationTest @Autowired constructor(
     private val mockMvc: MockMvc,
     private val repository: FuelEntryRepository,
+    private val vehicles: VehicleRepository,
+    private val vehicleService: VehicleService,
+    private val users: AppUserService,
+    private val userRepository: AppUserRepository,
 ) {
 
+    private val githubId = 4711L
+    private var userId = 0L
+
     @BeforeEach
-    fun cleanDb() {
+    fun setUp() {
         repository.deleteAll()
+        vehicles.deleteAll()
+        userRepository.deleteAll()
+        userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
     }
 
-    @Test
-    fun `GET root renders empty draft panel with three empty slots`() {
-        val body = mockMvc.get("/") { with(oauth2Login()) }.andReturn().response.contentAsString
+    private fun login(): RequestPostProcessor = oauth2Login().attributes { it["id"] = githubId }
 
-        // three slot tiles + the input form
-        body.occurrencesOf("""data-testid="slot"""") shouldBe 3
-        body.occurrencesOf(">—<") shouldBe 3
+    @Test
+    fun `GET root renders empty draft panel with four empty slots`() {
+        val body = mockMvc.get("/") { with(login()) }.andReturn().response.contentAsString
+
+        // four slot tiles (liter, €/liter, km, vehicle) + the input form
+        body.occurrencesOf("""data-testid="slot"""") shouldBe 4
+        body.occurrencesOf(">—<") shouldBe 4
         body shouldContain """data-testid="draft-panel""""
         body shouldContainAll listOf(
             """name="liters" value=""""",
@@ -74,30 +91,46 @@ class FuelControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `random-order entry produces a complete fuel entry and persists it`() {
-        // 1) liters first
+    fun `a vehicle is matched from the same input by substring and fills the vehicle slot`() {
+        val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+
+        // typing a substring of the vehicle name resolves it
+        val body = postValue(value = "omb")
+
+        body shouldContain """name="vehicleId" value="$vehicleId""""
+        body shouldContain "Kombi"
+    }
+
+    @Test
+    fun `random-order entry plus a vehicle produces a complete entry and persists it`() {
+        val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+
+        // 1) liters
         var body = postValue(value = "42.5")
         body shouldContain """name="liters" value="42.5""""
-        withClue("no save yet — draft incomplete") {
-            repository.count() shouldBe 0
-        }
+        withClue("no save yet — draft incomplete") { repository.count() shouldBe 0 }
 
-        // 2) kilometers next
+        // 2) kilometers
         body = postValue(value = "680", liters = "42.5")
         body shouldContain """name="kilometers" value="680.0""""
         repository.count() shouldBe 0
 
-        // 3) price last → completes the entry
+        // 3) price — three numbers, but still no vehicle → not saved yet
         body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
+        body shouldContain """data-testid="draft-panel""""
+        repository.count() shouldBe 0
 
-        // result panel shown with calculated consumption + total cost
+        // 4) vehicle (substring) completes the entry
+        body = postValue(value = "omb", liters = "42.5", pricePerLiter = "1.749", kilometers = "680.0")
+
         body shouldContain """data-testid="result-panel""""
         body shouldContain "6.25"     // 42.5 / 680 * 100
         body shouldContain "74.33"    // 42.5 * 1.749
+        body shouldContain "Kombi"
 
-        // entry persisted
         repository.count() shouldBe 1
         val saved = repository.findAll().single()
+        saved.vehicleId shouldBe vehicleId
         saved.liters shouldBe 42.5
         saved.pricePerLiter shouldBe 1.749
         saved.kilometers shouldBe 680.0
@@ -105,10 +138,6 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `classification falls back when primary slot already filled`() {
-        // First value (45) lands in LITERS by magnitude.
-        // Second value (30) would also be LITERS by magnitude, but that slot is
-        // taken — fallback by log-distance to typicals (price=1.85, km=500)
-        // makes PRICE_PER_LITER the closest match.
         val body = postValue(value = "30", liters = "45")
 
         body shouldContain """name="pricePerLiter" value="30.0""""
@@ -116,7 +145,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `invalid (non-numeric) value leaves the draft unchanged`() {
+    fun `invalid (non-numeric, non-matching) value leaves the draft unchanged`() {
         val body = postValue(value = "abc", liters = "42.5")
 
         body shouldContain """name="liters" value="42.5""""
@@ -134,7 +163,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `reset endpoint returns an empty draft`() {
-        val body = mockMvc.post("/fuel/reset") { with(oauth2Login()) }.andReturn().response.contentAsString
+        val body = mockMvc.post("/fuel/reset") { with(login()) }.andReturn().response.contentAsString
 
         body shouldContainAll listOf(
             """name="liters" value=""""",
@@ -148,12 +177,14 @@ class FuelControllerIntegrationTest @Autowired constructor(
         liters: String = "",
         pricePerLiter: String = "",
         kilometers: String = "",
+        vehicleId: String = "",
     ): String = mockMvc.post("/fuel/value") {
-        with(oauth2Login())
+        with(login())
         param("value", value)
         param("liters", liters)
         param("pricePerLiter", pricePerLiter)
         param("kilometers", kilometers)
+        param("vehicleId", vehicleId)
     }.andReturn().response.contentAsString
 
     // ---- tiny local helpers built on top of kotest matchers ----

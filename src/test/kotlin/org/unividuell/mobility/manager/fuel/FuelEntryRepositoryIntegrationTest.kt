@@ -27,6 +27,7 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
     fun `save assigns an id and persists all fields`() {
         val saved = repository.save(
             FuelEntry(
+                vehicleId = 1L,
                 liters = 42.5,
                 pricePerLiter = 1.749,
                 kilometers = 680.0,
@@ -45,7 +46,7 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
     @Test
     fun `computed consumption per 100km matches formula`() {
         val saved = repository.save(
-            FuelEntry(liters = 45.32, pricePerLiter = 1.859, kilometers = 520.0)
+            FuelEntry(vehicleId = 1L, liters = 45.32, pricePerLiter = 1.859, kilometers = 520.0)
         )
 
         val loaded = repository.findById(saved.id!!).orElseThrow()
@@ -55,9 +56,9 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
 
     @Test
     fun `multiple entries can coexist and be enumerated`() {
-        repository.save(FuelEntry(liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
-        repository.save(FuelEntry(liters = 50.0, pricePerLiter = 1.8, kilometers = 600.0))
-        repository.save(FuelEntry(liters = 35.0, pricePerLiter = 1.9, kilometers = 450.0))
+        repository.save(FuelEntry(vehicleId = 1L, liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
+        repository.save(FuelEntry(vehicleId = 1L, liters = 50.0, pricePerLiter = 1.8, kilometers = 600.0))
+        repository.save(FuelEntry(vehicleId = 1L, liters = 35.0, pricePerLiter = 1.9, kilometers = 450.0))
 
         val all = repository.findAll().toList()
         all shouldHaveSize 3
@@ -66,7 +67,7 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
 
     @Test
     fun `deleteAll removes everything`() {
-        repository.save(FuelEntry(liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
+        repository.save(FuelEntry(vehicleId = 1L, liters = 40.0, pricePerLiter = 1.7, kilometers = 500.0))
         repository.count() shouldBe 1
 
         repository.deleteAll()

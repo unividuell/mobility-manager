@@ -6,6 +6,7 @@ import org.springframework.data.relational.core.mapping.Table
 @Table("fuel_entries")
 data class FuelEntry(
     @Id val id: Long? = null,
+    val vehicleId: Long,
     val liters: Double,
     val pricePerLiter: Double,
     val kilometers: Double,

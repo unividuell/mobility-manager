@@ -21,6 +21,11 @@
             <span class="text-7xl font-extrabold tabular-nums tracking-tight text-emerald-400 sm:text-8xl"
                   th:text="${#numbers.formatDecimal(saved.consumptionPer100Km, 1, 'POINT', 2, 'POINT')}">8.72</span>
             <span class="text-base text-zinc-400 sm:text-lg">L / 100 km</span>
+            <span th:if="${pickedVehicle != null}" class="mt-2 flex items-center gap-2 text-sm text-zinc-400">
+                <span class="h-3 w-3 rounded-full ring-1 ring-white/10"
+                      th:style="'background-color:' + ${pickedVehicle.color}"></span>
+                <span th:text="${pickedVehicle.name}">Kombi</span>
+            </span>
         </div>
 
         <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-left">
@@ -107,7 +112,30 @@
                          : '—'">—</span>
             </div>
 
+            <!-- 4th slot: the vehicle, matched from the same input by substring -->
+            <div data-testid="slot"
+                 th:attr="data-filled=${draft.vehicleId != null}"
+                 th:classappend="${draft.vehicleId != null}
+                    ? 'border-cyan-400 bg-zinc-900'
+                    : 'border-transparent bg-zinc-900/60'"
+                 class="flex items-center justify-between rounded-xl border-l-4 px-4 py-3 transition">
+                <span class="text-sm text-zinc-400">Fahrzeug</span>
+                <span class="flex items-center gap-2">
+                    <span th:if="${pickedVehicle != null}" class="h-3 w-3 rounded-full ring-1 ring-white/10"
+                          th:style="'background-color:' + ${pickedVehicle.color}"></span>
+                    <span th:classappend="${draft.vehicleId != null} ? 'text-zinc-100' : 'text-zinc-600'"
+                          class="text-2xl font-semibold"
+                          th:text="${pickedVehicle != null} ? ${pickedVehicle.name} : '—'">—</span>
+                </span>
+            </div>
+
         </div>
+
+        <!-- No vehicles yet: a fuel entry can't be completed without one. -->
+        <p th:if="${vehicles.isEmpty()}" class="rounded-xl bg-zinc-900/60 px-4 py-4 text-center text-sm text-zinc-400">
+            Erst ein <a href="/vehicles/new" class="text-cyan-400 underline">Fahrzeug anlegen</a>,
+            dann tanken.
+        </p>
 
         <form hx-post="/fuel/value"
               hx-target="#panel"
@@ -117,19 +145,21 @@
             <input type="hidden" name="liters" th:value="${draft.liters}">
             <input type="hidden" name="pricePerLiter" th:value="${draft.pricePerLiter}">
             <input type="hidden" name="kilometers" th:value="${draft.kilometers}">
+            <input type="hidden" name="vehicleId" th:value="${draft.vehicleId}">
             <input data-testid="value-input"
                    type="text"
                    name="value"
-                   inputmode="decimal"
+                   list="vehicle-options"
                    autocomplete="off"
                    autofocus
-                   required
-                   pattern="[0-9]+([.,][0-9]+)?"
                    placeholder="0"
                    class="w-full border-b-4 border-cyan-400 bg-transparent py-4 text-center
                           text-7xl font-bold tabular-nums tracking-tight text-zinc-100
                           caret-cyan-400 outline-none placeholder:text-zinc-800
                           sm:text-8xl">
+            <datalist id="vehicle-options">
+                <option th:each="v : ${vehicles}" th:value="${v.name}"></option>
+            </datalist>
         </form>
 
     </div>

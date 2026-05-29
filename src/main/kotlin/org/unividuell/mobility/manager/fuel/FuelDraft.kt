@@ -9,6 +9,7 @@ data class FuelDraft(
     val liters: Double? = null,
     val pricePerLiter: Double? = null,
     val kilometers: Double? = null,
+    val vehicleId: Long? = null,
 ) {
     val filledFields: Set<FuelField>
         get() = buildSet {
@@ -18,7 +19,7 @@ data class FuelDraft(
         }
 
     val isComplete: Boolean
-        get() = liters != null && pricePerLiter != null && kilometers != null
+        get() = liters != null && pricePerLiter != null && kilometers != null && vehicleId != null
 
     fun with(field: FuelField, value: Double): FuelDraft = when (field) {
         FuelField.LITERS -> copy(liters = value)
@@ -27,6 +28,7 @@ data class FuelDraft(
     }
 
     fun toEntry(): FuelEntry = FuelEntry(
+        vehicleId = requireNotNull(vehicleId) { "vehicleId must be set" },
         liters = requireNotNull(liters) { "liters must be set" },
         pricePerLiter = requireNotNull(pricePerLiter) { "pricePerLiter must be set" },
         kilometers = requireNotNull(kilometers) { "kilometers must be set" },
