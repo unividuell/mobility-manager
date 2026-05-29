@@ -18,6 +18,7 @@
 
     <header class="mb-4 flex items-center justify-between text-sm text-zinc-400">
         <span sec:authentication="principal.attributes['displayName']">Fahrer</span>
+        <a href="/vehicles" class="text-zinc-500 transition hover:text-zinc-200">Fahrzeuge</a>
         <form action="/logout" method="post">
             <button type="submit"
                     class="rounded-lg px-2 py-1 text-zinc-500 transition hover:text-zinc-200

@@ -3,8 +3,10 @@
 # from the base src/main/resources/application.yaml. Activated via @ActiveProfiles("test").
 spring:
   datasource:
-    # SQLite in-memory with shared cache so Hikari's pool sees one DB.
-    # Pool size pinned to 1 because SQLite is single-writer anyway.
+    # SQLite in-memory with shared cache so all Hikari connections see one DB
+    # (the shared in-memory DB lives as long as >=1 connection stays open).
+    # Pool > 1 is required: loading an aggregate that owns a child collection
+    # (Vehicle -> vehicle_managers) needs a second connection concurrently.
     url: jdbc:sqlite:file::memory:?cache=shared
     hikari:
-      maximum-pool-size: 1
+      maximum-pool-size: 5
