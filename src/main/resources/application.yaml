@@ -1,3 +1,17 @@
 spring:
   application:
     name: mobility-manager
+  datasource:
+    url: jdbc:sqlite:./data/mobility-manager.db
+    driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: never
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080

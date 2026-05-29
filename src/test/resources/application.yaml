@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    # SQLite in-memory with shared cache so Hikari's pool sees one DB.
+    # Pool size pinned to 1 because SQLite is single-writer anyway.
+    url: jdbc:sqlite:file::memory:?cache=shared
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+  flyway:
+    locations: classpath:db/migration
+  thymeleaf:
+    cache: false
