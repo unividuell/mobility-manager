@@ -24,6 +24,16 @@ spring:
     baseline-on-migrate: true
   thymeleaf:
     cache: false
+  session:
+    # sessions are persisted to SQLite (spring-session-jdbc) so a login survives
+    # an app restart; Flyway owns the schema, so Spring Session must not create it.
+    jdbc:
+      initialize-schema: never
 
 server:
   port: 8080
+  servlet:
+    session:
+      # long timeout so "stay logged in" is meaningful (the persisted session
+      # otherwise still expires after 30 min of inactivity)
+      timeout: 30d
