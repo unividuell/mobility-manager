@@ -1,6 +1,14 @@
 spring:
   application:
     name: mobility-manager
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: Ov23lieWH11YI3qPP5Og
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope: read:user
   datasource:
     url: jdbc:sqlite:./data/mobility-manager.db
     driver-class-name: org.sqlite.JDBC

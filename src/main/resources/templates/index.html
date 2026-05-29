@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" class="h-full">
+<html lang="de" class="h-full" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -15,6 +15,18 @@
 <main class="mx-auto flex h-full w-full max-w-md flex-col px-4
              pt-[max(env(safe-area-inset-top),1rem)]
              pb-[max(env(safe-area-inset-bottom),1rem)]">
+
+    <header class="mb-4 flex items-center justify-between text-sm text-zinc-400">
+        <span sec:authentication="principal.attributes['displayName']">Fahrer</span>
+        <form action="/logout" method="post">
+            <button type="submit"
+                    class="rounded-lg px-2 py-1 text-zinc-500 transition hover:text-zinc-200
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600">
+                Abmelden
+            </button>
+        </form>
+    </header>
+
     <div th:replace="~{fragments/panel :: panel}"></div>
 </main>
 </body>

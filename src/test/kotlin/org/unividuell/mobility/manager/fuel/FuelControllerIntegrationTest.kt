@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
@@ -26,7 +27,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `GET root renders empty draft panel with three empty slots`() {
-        val body = mockMvc.get("/").andReturn().response.contentAsString
+        val body = mockMvc.get("/") { with(oauth2Login()) }.andReturn().response.contentAsString
 
         // three slot tiles + the input form
         body.occurrencesOf("""data-testid="slot"""") shouldBe 3
@@ -131,7 +132,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `reset endpoint returns an empty draft`() {
-        val body = mockMvc.post("/fuel/reset").andReturn().response.contentAsString
+        val body = mockMvc.post("/fuel/reset") { with(oauth2Login()) }.andReturn().response.contentAsString
 
         body shouldContainAll listOf(
             """name="liters" value=""""",
@@ -146,6 +147,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
         pricePerLiter: String = "",
         kilometers: String = "",
     ): String = mockMvc.post("/fuel/value") {
+        with(oauth2Login())
         param("value", value)
         param("liters", liters)
         param("pricePerLiter", pricePerLiter)

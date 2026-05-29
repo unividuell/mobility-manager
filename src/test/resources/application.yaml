@@ -1,4 +1,15 @@
 spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            # Dummy creds so the OAuth2 client autoconfig registers and the
+            # SecurityFilterChain can be built; the login flow itself isn't
+            # exercised in tests (we use the oauth2Login() request processor).
+            client-id: test
+            client-secret: test
+            scope: read:user
   datasource:
     # SQLite in-memory with shared cache so Hikari's pool sees one DB.
     # Pool size pinned to 1 because SQLite is single-writer anyway.
