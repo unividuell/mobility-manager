@@ -155,15 +155,11 @@
 			<version>${mockk.version}</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- kotest is used for assertions only; tests run on the JUnit 5 engine
+		     (no kotest Spec runner). -->
 		<dependency>
 			<groupId>io.kotest</groupId>
 			<artifactId>kotest-assertions-core-jvm</artifactId>
-			<version>${kotest.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.kotest</groupId>
-			<artifactId>kotest-runner-junit5-jvm</artifactId>
 			<version>${kotest.version}</version>
 			<scope>test</scope>
 		</dependency>
