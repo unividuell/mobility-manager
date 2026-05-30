@@ -20,6 +20,9 @@ class SecurityConfig(
             authorizeHttpRequests {
                 authorize("/login", permitAll)
                 authorize("/error", permitAll)
+                // health probe for the container/orchestrator; shows only
+                // {"status":"UP"} (details default to "never"), no secrets.
+                authorize("/actuator/health", permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2Login {

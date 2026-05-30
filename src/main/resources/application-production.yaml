@@ -1,0 +1,25 @@
+# Production overrides, activated via SPRING_PROFILES_ACTIVE=production (set in
+# docker-compose). This file only carries what differs from the local/dev
+# defaults in application.yaml. Secrets are injected as MOBILITY_MANAGER_*
+# environment variables by docker-compose.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            # client-id is public (already in the repo). Override only if
+            # production uses a separate GitHub OAuth app with a different
+            # authorization callback URL; otherwise the dev app's id is reused.
+            client-id: ${MOBILITY_MANAGER_GITHUB_CLIENT_ID:Ov23lieWH11YI3qPP5Og}
+            # required: no default, so the app fails fast if the secret is missing.
+            client-secret: ${MOBILITY_MANAGER_GITHUB_CLIENT_SECRET}
+  datasource:
+    # absolute path inside the container; docker-compose bind-mounts the host
+    # dir /opt/unividuell/mobility-manager onto /data, so the SQLite file
+    # survives container/image replacement. Query params mirror dev:
+    # date_class=text keeps LocalDate readable, foreign_keys=true enforces FKs.
+    url: jdbc:sqlite:/data/mobility-manager.db?date_class=text&date_string_format=yyyy-MM-dd&foreign_keys=true
+  thymeleaf:
+    # serve cached templates in production (dev disables the cache for reloads)
+    cache: true

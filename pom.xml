@@ -27,9 +27,9 @@
 		<url/>
 	</scm>
 	<properties>
-		<java.version>24</java.version>
-		<kotlin.version>2.2.21</kotlin.version>
-		<spring-ai.version>2.0.0-M8</spring-ai.version>
+		<java.version>25</java.version>
+		<!-- 2.3.0 is the first release with JVM target 25 support -->
+		<kotlin.version>2.3.0</kotlin.version>
 		<spring-modulith.version>2.0.6</spring-modulith.version>
 		<mockk.version>1.13.13</mockk.version>
 		<kotest.version>5.9.1</kotest.version>
@@ -79,10 +79,6 @@
 		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
 			<artifactId>kotlin-stdlib</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-starter-model-anthropic</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
@@ -188,13 +184,6 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
-			<dependency>
-				<groupId>org.springframework.ai</groupId>
-				<artifactId>spring-ai-bom</artifactId>
-				<version>${spring-ai.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -205,6 +194,32 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<image>
+						<!-- fixed tag: every push to main overwrites :latest -->
+						<name>ghcr.io/unividuell/mobility-manager:latest</name>
+						<!-- the prod server is arm64; build natively for it. -->
+						<imagePlatform>linux/arm64</imagePlatform>
+						<!-- Keep the default builder (builder-noble-java-tiny): it
+						     is multi-arch (has arm64), whereas the jammy base/full
+						     builders are amd64-only. Its own run image is distroless
+						     (no shell), so override the run image to the noble base,
+						     which is multi-arch AND ships bash for the healthcheck. -->
+						<runImage>paketobuildpacks/run-noble-base</runImage>
+						<env>
+							<BP_JVM_VERSION>25</BP_JVM_VERSION>
+						</env>
+					</image>
+					<docker>
+						<!-- credentials come from the CI environment; unused for
+						     local builds since publish defaults to false. -->
+						<publishRegistry>
+							<url>https://ghcr.io</url>
+							<username>${env.REGISTRY_USERNAME}</username>
+							<password>${env.REGISTRY_PASSWORD}</password>
+						</publishRegistry>
+					</docker>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.jetbrains.kotlin</groupId>

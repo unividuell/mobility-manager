@@ -1,0 +1,46 @@
+name: build-and-push-image
+
+# Build a fresh OCI image on every push to main and push it to GHCR under the
+# fixed tag ghcr.io/unividuell/mobility-manager:latest. The image is produced by
+# the Spring Boot Maven plugin (Cloud Native Buildpacks) — no Dockerfile.
+on:
+  push:
+    branches: [ main ]
+  # allow manual re-runs from the Actions tab
+  workflow_dispatch:
+
+# a newer push supersedes an in-flight build
+concurrency:
+  group: build-image
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write   # required for GITHUB_TOKEN to push to GHCR
+
+jobs:
+  build-image:
+    # native arm64 runner (free for public repos) so the buildpack builds the
+    # linux/arm64 image natively — no QEMU emulation. Matches the prod server.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Build and push image
+        env:
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        # build-image forks the lifecycle through the package phase, so tests
+        # run and gate the push. Image name + publishRegistry are configured in
+        # the pom; -Dspring-boot.build-image.publish=true triggers the push.
+        run: >
+          ./mvnw --batch-mode --no-transfer-progress
+          spring-boot:build-image
+          -Dspring-boot.build-image.publish=true
