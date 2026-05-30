@@ -23,3 +23,9 @@ spring:
   thymeleaf:
     # serve cached templates in production (dev disables the cache for reloads)
     cache: true
+
+server:
+  # behind Caddy (TLS terminated at the proxy, plain HTTP forwarded). Honour the
+  # X-Forwarded-Proto/Host headers so Spring reconstructs https URLs — otherwise
+  # the OAuth2 redirect_uri is built as http:// and GitHub login fails.
+  forward-headers-strategy: framework
