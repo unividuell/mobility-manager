@@ -69,7 +69,9 @@ services:
       SPRING_PROFILES_ACTIVE: production
       # secrets — sourced from the .env file, all MOBILITY_MANAGER_-prefixed
       MOBILITY_MANAGER_GITHUB_CLIENT_SECRET: ${MOBILITY_MANAGER_GITHUB_CLIENT_SECRET}
-      #MOBILITY_MANAGER_GITHUB_CLIENT_ID: ${MOBILITY_MANAGER_GITHUB_CLIENT_ID}
+      MOBILITY_MANAGER_GITHUB_CLIENT_ID: ${MOBILITY_MANAGER_GITHUB_CLIENT_ID}
+    networks:
+      - app-network
     volumes:
       # host dir -> /data; the SQLite file lands at
       # /opt/unividuell/mobility-manager/mobility-manager.db
