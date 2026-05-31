@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="de" class="h-full"
       xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:style="${accent != null} ? '--accent:' + ${accent.color} + ';--accent-fg:' + ${accent.onColor} : null">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -12,8 +13,9 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"
             integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
             crossorigin="anonymous"></script>
+    <th:block th:replace="~{fragments/theme :: accent}"></th:block>
 </head>
-<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-cyan-400/30">
+<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-accent/30">
 <main class="mx-auto flex h-full w-full max-w-md flex-col px-4
              pt-[max(env(safe-area-inset-top),1rem)]
              pb-[max(env(safe-area-inset-bottom),1rem)]">
@@ -32,7 +34,7 @@
         <!-- Vehicle cards. The active context is ringed and badged; others offer "Wählen". -->
         <div th:each="vehicle : ${vehicles}"
              th:data-vehicle="${vehicle.id}"
-             th:classappend="${selectedVehicle?.id == vehicle.id} ? 'ring-2 ring-cyan-400' : ''"
+             th:classappend="${selectedVehicle?.id == vehicle.id} ? 'ring-2 ring-accent' : ''"
              class="flex items-center gap-1.5 rounded-xl bg-zinc-900/60 px-3 py-3">
             <span class="h-8 w-8 shrink-0 rounded-full ring-1 ring-white/10"
                   th:style="'background-color:' + ${vehicle.color}"></span>
@@ -40,11 +42,11 @@
 
             <span th:if="${selectedVehicle?.id == vehicle.id}"
                   data-testid="active-vehicle"
-                  class="rounded-lg px-2 py-1 text-sm font-medium text-cyan-400">✓ Aktiv</span>
+                  class="rounded-lg px-2 py-1 text-sm font-medium text-accent">✓ Aktiv</span>
             <form th:unless="${selectedVehicle?.id == vehicle.id}"
                   th:action="@{/vehicles/{id}/select(id=${vehicle.id})}" method="post">
                 <button type="submit" data-testid="select-vehicle"
-                        class="rounded-lg px-2 py-1 text-sm text-cyan-400/90 transition hover:text-cyan-300">
+                        class="rounded-lg px-2 py-1 text-sm text-accent/90 transition hover:text-accent-bright">
                     Wählen
                 </button>
             </form>
@@ -53,8 +55,8 @@
             <a th:href="@{/vehicles/{id}/fuel(id=${vehicle.id})}"
                data-testid="fuel-list-link"
                aria-label="Betankungen" title="Betankungen"
-               class="rounded-lg p-1.5 text-zinc-400 transition hover:text-cyan-300
-                      focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
+               class="rounded-lg p-1.5 text-zinc-400 transition hover:text-accent-bright
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"></path>
@@ -88,9 +90,9 @@
     </div>
 
     <a href="/vehicles/new"
-       class="mt-6 w-full rounded-xl bg-cyan-500 px-4 py-4 text-center text-base font-semibold text-cyan-950
-              transition active:scale-[0.98] hover:bg-cyan-400
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+       class="mt-6 w-full rounded-xl bg-accent px-4 py-4 text-center text-base font-semibold text-accent-fg
+              transition active:scale-[0.98] hover:bg-accent-bright
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright">
         + Neues Fahrzeug
     </a>
 

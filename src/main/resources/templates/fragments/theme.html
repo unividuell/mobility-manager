@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+
+<!--
+  Registers the dynamic accent palette as Tailwind theme colors, so utilities like
+  `bg-accent`, `text-accent`, `border-accent`, `ring-accent`, `caret-accent`,
+  `text-accent-fg`, `*-accent-bright` and `selection:bg-accent/30` are generated.
+
+  The actual hue comes from the `--accent` / `--accent-fg` CSS variables set inline
+  on each page's <html> element (from the active vehicle's color); the values below
+  are the fallback brand cyan used pre-login or when no vehicle is in context.
+  `accent-bright` is the slightly lightened tone used for hovers and focus rings.
+-->
+<style th:fragment="accent" type="text/tailwindcss">
+    @theme {
+        --color-accent: var(--accent, #06b6d4);
+        --color-accent-fg: var(--accent-fg, #083344);
+        --color-accent-bright: color-mix(in srgb, var(--accent, #06b6d4), white 18%);
+    }
+</style>
+
+</head>
+</html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="de" class="h-full" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" class="h-full" xmlns:th="http://www.thymeleaf.org"
+      th:style="${accent != null} ? '--accent:' + ${accent.color} + ';--accent-fg:' + ${accent.onColor} : null">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7,8 +8,9 @@
     <meta name="color-scheme" content="dark">
     <title th:text="${vehicle != null} ? 'Fahrzeug bearbeiten' : 'Neues Fahrzeug'">Fahrzeug</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <th:block th:replace="~{fragments/theme :: accent}"></th:block>
 </head>
-<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-cyan-400/30">
+<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-accent/30">
 <main class="mx-auto flex h-full w-full max-w-md flex-col px-4
              pt-[max(env(safe-area-inset-top),1rem)]
              pb-[max(env(safe-area-inset-bottom),1rem)]">
@@ -28,8 +30,8 @@
             <input type="text" name="name" required autofocus autocomplete="off"
                    th:value="${vehicle?.name}"
                    placeholder="z.B. Kombi"
-                   class="rounded-xl border-b-2 border-cyan-400 bg-zinc-900 px-4 py-3 text-lg
-                          text-zinc-100 caret-cyan-400 outline-none placeholder:text-zinc-600">
+                   class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3 text-lg
+                          text-zinc-100 caret-accent outline-none placeholder:text-zinc-600">
         </label>
 
         <label class="flex items-center justify-between gap-4">
@@ -46,9 +48,9 @@
                 Abbrechen
             </a>
             <button type="submit"
-                    class="flex-1 rounded-xl bg-cyan-500 px-4 py-4 text-base font-semibold text-cyan-950
-                           transition active:scale-[0.98] hover:bg-cyan-400
-                           focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+                    class="flex-1 rounded-xl bg-accent px-4 py-4 text-base font-semibold text-accent-fg
+                           transition active:scale-[0.98] hover:bg-accent-bright
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright">
                 Speichern
             </button>
         </div>

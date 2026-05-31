@@ -96,7 +96,7 @@
             <div data-testid="slot"
                  th:attr="data-filled=${draft.liters != null}"
                  th:classappend="${draft.liters != null}
-                    ? 'border-cyan-400 bg-zinc-900'
+                    ? 'border-accent bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
                  class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
                 <span class="text-xs text-zinc-400">Liter</span>
@@ -110,7 +110,7 @@
             <div data-testid="slot"
                  th:attr="data-filled=${draft.pricePerLiter != null}"
                  th:classappend="${draft.pricePerLiter != null}
-                    ? 'border-cyan-400 bg-zinc-900'
+                    ? 'border-accent bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
                  class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
                 <span class="text-xs text-zinc-400">€/Liter</span>
@@ -124,7 +124,7 @@
             <div data-testid="slot"
                  th:attr="data-filled=${draft.kilometers != null}"
                  th:classappend="${draft.kilometers != null}
-                    ? 'border-cyan-400 bg-zinc-900'
+                    ? 'border-accent bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
                  class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
                 <span class="text-xs text-zinc-400">Kilometer</span>
@@ -139,7 +139,7 @@
             <div data-testid="slot"
                  th:attr="data-filled=${draft.date != null}"
                  th:classappend="${draft.date != null}
-                    ? 'border-cyan-400 bg-zinc-900'
+                    ? 'border-accent bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
                  class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
                 <span class="text-xs text-zinc-400">Datum</span>
@@ -152,7 +152,7 @@
 
         <!-- No vehicles yet: nothing to fuel against. -->
         <p th:if="${vehicles.isEmpty()}" class="rounded-xl bg-zinc-900/60 px-4 py-4 text-center text-sm text-zinc-400">
-            Erst ein <a href="/vehicles/new" class="text-cyan-400 underline">Fahrzeug anlegen</a>,
+            Erst ein <a href="/vehicles/new" class="text-accent underline">Fahrzeug anlegen</a>,
             dann tanken.
         </p>
 
@@ -160,7 +160,7 @@
         <p th:if="${not vehicles.isEmpty() and selectedVehicle == null}"
            data-testid="select-vehicle-hint"
            class="rounded-xl bg-zinc-900/60 px-4 py-4 text-center text-sm text-zinc-400">
-            Bitte zuerst ein <a href="/vehicles" class="text-cyan-400 underline">Fahrzeug wählen</a>.
+            Bitte zuerst ein <a href="/vehicles" class="text-accent underline">Fahrzeug wählen</a>.
         </p>
 
         <!-- Input is only offered once a vehicle context is set. -->
@@ -181,9 +181,9 @@
                    autocomplete="off"
                    autofocus
                    placeholder="0"
-                   class="w-full border-b-4 border-cyan-400 bg-transparent py-4 text-center
+                   class="w-full border-b-4 border-accent bg-transparent py-4 text-center
                           text-7xl font-bold tabular-nums tracking-tight text-zinc-100
-                          caret-cyan-400 outline-none placeholder:text-zinc-800
+                          caret-accent outline-none placeholder:text-zinc-800
                           sm:text-8xl">
         </form>
 

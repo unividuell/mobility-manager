@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="de" class="h-full" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" class="h-full" xmlns:th="http://www.thymeleaf.org"
+      th:style="'--accent:' + ${vehicle.color}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7,19 +8,21 @@
     <meta name="color-scheme" content="dark">
     <title th:text="'Betankungen · ' + ${vehicle.name}">Betankungen</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <th:block th:replace="~{fragments/theme :: accent}"></th:block>
     <style>
         /* Selection highlight is toggled by JS at runtime, so it must NOT rely on
-           Tailwind classes (the browser CDN only generates classes present at load). */
+           Tailwind classes (the browser CDN only generates classes present at load).
+           It tracks the vehicle accent via --accent, falling back to brand cyan. */
         .bar { background-color: #3f3f46; min-height: 0.25rem; transition: background-color .15s; }
-        .bar.selected { background-color: #22d3ee; }
+        .bar.selected { background-color: var(--accent, #22d3ee); }
         tr.entry { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        tr.entry.selected { background-color: rgba(34, 211, 238, .14); }
+        tr.entry.selected { background-color: color-mix(in srgb, var(--accent, #22d3ee) 14%, transparent); }
         /* Optional columns (€/L, total) hidden by default; tapping the header toggles them. */
         .col-opt { display: none; }
         table.cols-expanded .col-opt { display: table-cell; }
     </style>
 </head>
-<body class="h-full overflow-hidden bg-zinc-950 text-zinc-100 antialiased selection:bg-cyan-400/30">
+<body class="h-full overflow-hidden bg-zinc-950 text-zinc-100 antialiased selection:bg-accent/30">
 <main class="mx-auto flex h-full w-full max-w-md flex-col px-4
              pt-[max(env(safe-area-inset-top),1rem)]
              pb-[max(env(safe-area-inset-bottom),1rem)]">
