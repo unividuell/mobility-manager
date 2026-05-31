@@ -18,8 +18,12 @@
          th:object="${saved}">
 
         <div class="flex flex-1 flex-col items-center justify-center gap-1 text-center">
-            <span class="text-7xl font-extrabold tabular-nums tracking-tight text-emerald-400 sm:text-8xl"
+            <!-- consumption is unknown for the very first odometer reading (no prior distance) -->
+            <span th:if="${saved.consumptionPer100Km != null}"
+                  class="text-7xl font-extrabold tabular-nums tracking-tight text-emerald-400 sm:text-8xl"
                   th:text="${#numbers.formatDecimal(saved.consumptionPer100Km, 1, 'POINT', 2, 'POINT')}">8.72</span>
+            <span th:unless="${saved.consumptionPer100Km != null}"
+                  class="text-7xl font-extrabold tabular-nums tracking-tight text-zinc-600 sm:text-8xl">—</span>
             <span class="text-base text-zinc-400 sm:text-lg">L / 100 km</span>
 
             <!-- consumption trend vs. the previous refueling (down = greener = good) -->
@@ -54,7 +58,9 @@
             <div>
                 <dt class="text-xs uppercase tracking-wide text-zinc-500">Strecke</dt>
                 <dd class="text-lg font-semibold tabular-nums sm:text-xl"
-                    th:text="${#numbers.formatDecimal(saved.kilometers, 1, 'POINT', 1, 'POINT') + ' km'}">520.0 km</dd>
+                    th:text="${saved.distanceKm != null}
+                        ? ${#numbers.formatDecimal(saved.distanceKm, 1, 'POINT', 1, 'POINT') + ' km'}
+                        : '—'">520.0 km</dd>
             </div>
             <div>
                 <dt class="text-xs uppercase tracking-wide text-zinc-500">Kosten</dt>
@@ -121,18 +127,21 @@
                          : '—'">—</span>
             </div>
 
+            <!-- the distance slot: a trip distance for trip-meter vehicles, otherwise
+                 the absolute odometer reading (the driven distance is then computed) -->
             <div data-testid="slot"
-                 th:attr="data-filled=${draft.kilometers != null}"
-                 th:classappend="${draft.kilometers != null}
+                 th:attr="data-filled=${draft.distance != null}"
+                 th:classappend="${draft.distance != null}
                     ? 'border-accent bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
                  class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
-                <span class="text-xs text-zinc-400">Kilometer</span>
-                <span th:classappend="${draft.kilometers != null} ? 'text-zinc-100' : 'text-zinc-600'"
+                <span class="text-xs text-zinc-400" th:text="${draft.hasTripMeter} ? 'Kilometer' : 'Gesamt-km'">Kilometer</span>
+                <span th:classappend="${draft.distance != null} ? 'text-zinc-100' : 'text-zinc-600'"
                       class="text-xl font-semibold tabular-nums"
-                      th:text="${draft.kilometers != null}
-                         ? ${#numbers.formatDecimal(draft.kilometers, 1, 'POINT', 1, 'POINT')}
-                         : '—'">—</span>
+                      th:text="${draft.distance == null} ? '—'
+                         : (${draft.hasTripMeter}
+                            ? ${#numbers.formatDecimal(draft.distance, 1, 'POINT', 1, 'POINT')}
+                            : ${#numbers.formatDecimal(draft.distance, 1, 'POINT', 0, 'POINT')})">—</span>
             </div>
 
             <!-- the date, defaulting to today; override by typing one (e.g. 20.05.2026) -->
@@ -173,6 +182,7 @@
             <input type="hidden" name="liters" th:value="${draft.liters}">
             <input type="hidden" name="pricePerLiter" th:value="${draft.pricePerLiter}">
             <input type="hidden" name="kilometers" th:value="${draft.kilometers}">
+            <input type="hidden" name="odometer" th:value="${draft.odometer}">
             <input type="hidden" name="date" th:value="${draft.date}">
             <input data-testid="value-input"
                    type="text"

@@ -34,7 +34,7 @@ class DatabaseConfig {
     // can write a LocalDate but not read it back (same friction as Instant).
     @Bean
     fun jdbcCustomConversions(): JdbcCustomConversions =
-        JdbcCustomConversions(listOf(LocalDateToText, TextToLocalDate))
+        JdbcCustomConversions(listOf(LocalDateToText, TextToLocalDate, BooleanToInt, IntToBoolean))
 
     @WritingConverter
     private object LocalDateToText : Converter<LocalDate, String> {
@@ -44,5 +44,18 @@ class DatabaseConfig {
     @ReadingConverter
     private object TextToLocalDate : Converter<String, LocalDate> {
         override fun convert(source: String): LocalDate = LocalDate.parse(source)
+    }
+
+    // SQLite has no native boolean: values live in INTEGER columns as 0/1. Spring
+    // can write a Boolean but reads it back as an Integer, so map both directions
+    // explicitly (these only apply where the mapped property is a Boolean).
+    @WritingConverter
+    private object BooleanToInt : Converter<Boolean, Int> {
+        override fun convert(source: Boolean): Int = if (source) 1 else 0
+    }
+
+    @ReadingConverter
+    private object IntToBoolean : Converter<Int, Boolean> {
+        override fun convert(source: Int): Boolean = source != 0
     }
 }

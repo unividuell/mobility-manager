@@ -42,22 +42,28 @@ class FuelController(
         @RequestParam(required = false) liters: Double?,
         @RequestParam(required = false) pricePerLiter: Double?,
         @RequestParam(required = false) kilometers: Double?,
+        @RequestParam(required = false) odometer: Double?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate?,
         session: HttpSession,
         model: Model,
     ): String {
         val userId = currentUser.require(principal).id!!
         val vehicles = vehicleService.listFor(userId)
-        // the vehicle is the globally selected one, not part of the typed input
-        val selectedId = vehicleContext.current(session, userId)?.id
-        val current = FuelDraft(liters, pricePerLiter, kilometers, selectedId, date).withDefaults()
+        // the vehicle is the globally selected one, not part of the typed input; its
+        // trip-meter mode decides whether the distance slot is a trip or an odometer.
+        val selected = vehicleContext.current(session, userId)
+        val current = FuelDraft(
+            liters = liters, pricePerLiter = pricePerLiter,
+            kilometers = kilometers, odometer = odometer,
+            vehicleId = selected?.id, date = date,
+            hasTripMeter = selected?.hasTripMeter ?: true,
+        ).withDefaults()
 
         when (val result = service.applyValue(current, value)) {
-            is FuelService.DraftResult.Completed ->
-                renderPanel(
-                    model, vehicles, FuelDraft(vehicleId = selectedId).withDefaults(),
-                    saved = result.saved, delta = service.consumptionDelta(result.saved),
-                )
+            is FuelService.DraftResult.Completed -> {
+                val summary = service.summarize(result.saved)
+                renderPanel(model, vehicles, freshDraft(selected), saved = summary.point, delta = summary.delta)
+            }
             is FuelService.DraftResult.Pending ->
                 renderPanel(model, vehicles, result.draft, saved = null)
         }
@@ -93,9 +99,9 @@ class FuelController(
     ): String {
         val userId = currentUser.require(principal).id!!
         val vehicle = vehicleService.get(vehicleId, userId) // 404 unless the user owns it
-        val entries = service.history(vehicleId)            // newest first
-        val maxConsumption = entries.maxOfOrNull { it.consumptionPer100Km } ?: 0.0
-        val rows = entries.map { it.toRow(maxConsumption) }
+        val points = service.timeline(vehicleId)            // newest first, distance/consumption resolved
+        val maxConsumption = points.mapNotNull { it.consumptionPer100Km }.maxOrNull() ?: 0.0
+        val rows = points.map { it.toRow(maxConsumption) }
         model.addAttribute("vehicle", vehicle)
         model.addAttribute("rows", rows)                    // table: newest first
         model.addAttribute("chartRows", rows.reversed())    // chart: oldest → newest
@@ -113,20 +119,27 @@ class FuelController(
         return "redirect:/vehicles/$vehicleId/fuel"
     }
 
-    private fun FuelEntry.toRow(maxConsumption: Double) = FuelListRow(
+    private fun FuelPoint.toRow(maxConsumption: Double) = FuelListRow(
         id = id!!,
         dateDisplay = date.format(SHORT_DATE),
         consumption = consumptionPer100Km,
         liters = liters,
         pricePerLiter = pricePerLiter,
-        kilometers = kilometers,
+        kilometers = distanceKm,
         totalCost = totalCost,
-        barHeightPercent = if (maxConsumption > 0) (consumptionPer100Km / maxConsumption * 100).roundToInt() else 0,
+        barHeightPercent = if (maxConsumption > 0 && consumptionPer100Km != null) {
+            (consumptionPer100Km / maxConsumption * 100).roundToInt()
+        } else {
+            0
+        },
     )
 
-    /** An empty draft seeded with the selected vehicle and today's date. */
+    /** An empty draft seeded with the selected vehicle's id and trip-meter mode, plus today's date. */
     private fun freshDraft(session: HttpSession, userId: Long): FuelDraft =
-        FuelDraft(vehicleId = vehicleContext.current(session, userId)?.id).withDefaults()
+        freshDraft(vehicleContext.current(session, userId))
+
+    private fun freshDraft(vehicle: Vehicle?): FuelDraft =
+        FuelDraft(vehicleId = vehicle?.id, hasTripMeter = vehicle?.hasTripMeter ?: true).withDefaults()
 
     /** The only part pre-filled now is the date — it defaults to today. */
     private fun FuelDraft.withDefaults(): FuelDraft =
@@ -137,7 +150,7 @@ class FuelController(
         model: Model,
         vehicles: List<Vehicle>,
         draft: FuelDraft,
-        saved: FuelEntry?,
+        saved: FuelPoint?,
         delta: ConsumptionDelta? = null,
     ) {
         model.addAttribute("vehicles", vehicles)
@@ -146,7 +159,7 @@ class FuelController(
         // consumption trend vs. the previous refueling (only meaningful on a saved entry)
         model.addAttribute("consumptionDelta", delta)
         // the vehicle/date currently picked in the draft or linked to the saved entry, for display
-        val pickedId = saved?.vehicleId ?: draft.vehicleId
+        val pickedId = saved?.entry?.vehicleId ?: draft.vehicleId
         model.addAttribute("pickedVehicle", vehicles.firstOrNull { it.id == pickedId })
         val pickedDate = saved?.date ?: draft.date
         model.addAttribute("dateDisplay", pickedDate?.format(GERMAN_DATE))

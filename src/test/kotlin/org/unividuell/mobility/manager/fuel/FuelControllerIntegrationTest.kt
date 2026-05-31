@@ -1,6 +1,7 @@
 package org.unividuell.mobility.manager.fuel
 
 import io.kotest.assertions.withClue
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -248,6 +249,33 @@ class FuelControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `a total-only vehicle records the odometer and computes distance from the previous reading`() {
+        val vehicleId = vehicleService.create(userId, "Transporter", "#06b6d4", hasTripMeter = false).id!!
+
+        // first refueling: only the absolute reading is known, no distance to measure yet
+        postValue(value = "50000")
+        postValue(value = "40", odometer = "50000.0")
+        val first = postValue(value = "1.70", odometer = "50000.0", liters = "40")
+        first shouldContain """data-testid="result-panel""""
+        first shouldNotContain "consumption-delta"
+
+        // second refueling 900 km later: 45 L over (50900 - 50000) = 5.0 L/100km
+        postValue(value = "50900")
+        postValue(value = "45", odometer = "50900.0")
+        val second = postValue(value = "1.80", odometer = "50900.0", liters = "45")
+
+        second shouldContain """data-testid="result-panel""""
+        second shouldContain "5.00"     // 45 / 900 * 100
+        second shouldContain "900.0 km" // computed driven distance
+
+        repository.count() shouldBe 2
+        val readings = repository.findAll().toList()
+        readings.map { it.odometer } shouldContainExactlyInAnyOrder listOf(50000.0, 50900.0)
+        readings.all { it.kilometers == null } shouldBe true
+        readings.all { it.vehicleId == vehicleId } shouldBe true
+    }
+
+    @Test
     fun `reset endpoint returns an empty draft`() {
         vehicleService.create(userId, "Kombi", "#06b6d4")
 
@@ -347,6 +375,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
         liters: String = "",
         pricePerLiter: String = "",
         kilometers: String = "",
+        odometer: String = "",
         date: String = "",
     ): String = capture(
         mockMvc.post("/fuel/value") {
@@ -355,6 +384,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
             param("liters", liters)
             param("pricePerLiter", pricePerLiter)
             param("kilometers", kilometers)
+            param("odometer", odometer)
             param("date", date)
         }.andReturn(),
     )

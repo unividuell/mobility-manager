@@ -27,6 +27,9 @@ class FuelService(
         data class Completed(val saved: FuelEntry) : DraftResult
     }
 
+    /** A saved refueling resolved for the result screen: its figures and the trend. */
+    data class SavedFuel(val point: FuelPoint, val delta: ConsumptionDelta?)
+
     /**
      * Applies one raw input to the draft. The single input field carries two
      * possible targets: a positive number lands in one of the three numeric
@@ -39,7 +42,8 @@ class FuelService(
         val trimmed = rawValue.trim()
         val updated = run {
             parseValue(rawValue)?.let { parsed ->
-                classifier.classify(parsed, draft.filledFields)?.let { return@run draft.with(it, parsed) }
+                classifier.classify(parsed, draft.filledFields, draft.hasTripMeter)
+                    ?.let { return@run draft.with(it, parsed) }
             }
             parseDate(trimmed)?.let { return@run draft.copy(date = it) }
             draft
@@ -52,9 +56,12 @@ class FuelService(
         }
     }
 
-    /** All refuelings of a vehicle, newest first — backing the per-vehicle fuel list. */
-    fun history(vehicleId: Long): List<FuelEntry> =
-        repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicleId)
+    /**
+     * A vehicle's refuelings, newest first, each with its driven distance and
+     * consumption resolved (see [FuelCalculator]) — backing the per-vehicle list.
+     */
+    fun timeline(vehicleId: Long): List<FuelPoint> =
+        FuelCalculator.resolve(repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicleId))
 
     /**
      * Aggregated stats for each of the given vehicles, keyed by vehicle id. Every
@@ -67,19 +74,28 @@ class FuelService(
         } else {
             repository.findAllByVehicleIdIn(vehicleIds).groupBy { it.vehicleId }
         }
-        return vehicleIds.associateWith { VehicleFuelStats.from(byVehicle[it].orEmpty()) }
+        return vehicleIds.associateWith { VehicleFuelStats.from(FuelCalculator.resolve(byVehicle[it].orEmpty())) }
     }
 
     /**
-     * How [entry]'s consumption compares to the previous refueling of the same
-     * vehicle, or null when it is the first one (nothing to compare against).
+     * The just-saved entry resolved into its [FuelPoint] (distance + consumption)
+     * together with how its consumption compares to the previous refueling — for
+     * the result screen. The delta is null on the first comparable refueling, or
+     * when either side's consumption is unknown (e.g. the first odometer reading).
      */
-    fun consumptionDelta(entry: FuelEntry): ConsumptionDelta? {
-        val previous = repository.findPrevious(entry.vehicleId, entry.date, entry.id!!) ?: return null
-        return ConsumptionDelta(
-            previousPer100Km = previous.consumptionPer100Km,
-            diff = entry.consumptionPer100Km - previous.consumptionPer100Km,
-        )
+    fun summarize(saved: FuelEntry): SavedFuel {
+        val timeline = timeline(saved.vehicleId) // newest first
+        val index = timeline.indexOfFirst { it.id == saved.id }
+        val point = timeline.getOrElse(index) { FuelCalculator.resolve(listOf(saved)).first() }
+        val current = point.consumptionPer100Km
+        // the previous refueling in time is the next element in a newest-first list
+        val previous = timeline.getOrNull(index + 1)?.consumptionPer100Km
+        val delta = if (current != null && previous != null) {
+            ConsumptionDelta(previousPer100Km = previous, diff = current - previous)
+        } else {
+            null
+        }
+        return SavedFuel(point, delta)
     }
 
     /**

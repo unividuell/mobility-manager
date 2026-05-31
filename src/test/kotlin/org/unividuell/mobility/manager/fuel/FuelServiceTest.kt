@@ -297,7 +297,7 @@ class FuelServiceTest {
     }
 
     @Nested
-    inner class ConsumptionComparison {
+    inner class SavedSummary {
 
         // consumption = liters / kilometers * 100
         private fun entry(id: Long, liters: Double, kilometers: Double) = FuelEntry(
@@ -309,14 +309,21 @@ class FuelServiceTest {
             kilometers = kilometers,
         )
 
+        // newest first, as the repository returns it
+        private fun timelineReturns(repository: FuelEntryRepository, vararg entries: FuelEntry) {
+            every { repository.findAllByVehicleIdOrderByDateDescIdDesc(3L) } returns entries.toList()
+        }
+
         @Test
-        fun `is null when there is no previous entry`() {
+        fun `delta is null when there is no previous entry`() {
             val repository = mockk<FuelEntryRepository>()
             val service = newService(repository)
-            val current = entry(id = 2L, liters = 45.0, kilometers = 600.0)
-            every { repository.findPrevious(3L, current.date, 2L) } returns null
+            val only = entry(id = 2L, liters = 45.0, kilometers = 600.0)
+            timelineReturns(repository, only)
 
-            service.consumptionDelta(current).shouldBeNull()
+            val summary = service.summarize(only)
+            summary.point.consumptionPer100Km!! shouldBe (7.5 plusOrMinus 1e-9)
+            summary.delta.shouldBeNull()
         }
 
         @Test
@@ -325,9 +332,9 @@ class FuelServiceTest {
             val service = newService(repository)
             val current = entry(id = 2L, liters = 45.0, kilometers = 600.0)  // 7.5
             val previous = entry(id = 1L, liters = 40.0, kilometers = 800.0) // 5.0
-            every { repository.findPrevious(3L, current.date, 2L) } returns previous
+            timelineReturns(repository, current, previous)
 
-            val delta = service.consumptionDelta(current)!!
+            val delta = service.summarize(current).delta!!
             delta.previousPer100Km shouldBe (5.0 plusOrMinus 1e-9)
             delta.diff shouldBe (2.5 plusOrMinus 1e-9)
             delta.increased shouldBe true
@@ -340,12 +347,32 @@ class FuelServiceTest {
             val service = newService(repository)
             val current = entry(id = 2L, liters = 40.0, kilometers = 800.0)  // 5.0
             val previous = entry(id = 1L, liters = 45.0, kilometers = 600.0) // 7.5
-            every { repository.findPrevious(3L, current.date, 2L) } returns previous
+            timelineReturns(repository, current, previous)
 
-            val delta = service.consumptionDelta(current)!!
+            val delta = service.summarize(current).delta!!
             delta.diff shouldBe ((-2.5) plusOrMinus 1e-9)
             delta.decreased shouldBe true
             delta.sign shouldBe "−"
+        }
+
+        @Test
+        fun `odometer entry derives distance from the previous reading, first has none`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            // total-only vehicle: two readings 800 km apart; the 45 L cover that 800 km.
+            val first = FuelEntry(id = 1L, vehicleId = 3L, date = LocalDate.of(2026, 1, 1), liters = 40.0, pricePerLiter = 1.7, odometer = 50_000.0)
+            val second = FuelEntry(id = 2L, vehicleId = 3L, date = LocalDate.of(2026, 1, 20), liters = 45.0, pricePerLiter = 1.7, odometer = 50_800.0)
+            timelineReturns(repository, second, first)
+
+            val firstSummary = service.summarize(first)
+            firstSummary.point.distanceKm.shouldBeNull()
+            firstSummary.point.consumptionPer100Km.shouldBeNull()
+            firstSummary.delta.shouldBeNull()
+
+            val secondSummary = service.summarize(second)
+            secondSummary.point.distanceKm!! shouldBe (800.0 plusOrMinus 1e-9)
+            secondSummary.point.consumptionPer100Km!! shouldBe (45.0 / 800.0 * 100.0 plusOrMinus 1e-9)
+            secondSummary.delta.shouldBeNull() // previous reading has no consumption to compare against
         }
     }
 

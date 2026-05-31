@@ -58,14 +58,24 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `computed consumption per 100km matches formula`() {
+    fun `computed total cost matches formula`() {
         val saved = repository.save(
             FuelEntry(vehicleId = vehicleId, date = LocalDate.of(2026, 5, 20), liters = 45.32, pricePerLiter = 1.859, kilometers = 520.0)
         )
 
         val loaded = repository.findById(saved.id!!).orElseThrow()
-        loaded.consumptionPer100Km shouldBe (45.32 / 520.0 * 100.0).plusOrMinus(1e-9)
         loaded.totalCost shouldBe (45.32 * 1.859).plusOrMinus(1e-9)
+    }
+
+    @Test
+    fun `an odometer entry round-trips with a null kilometers column`() {
+        val saved = repository.save(
+            FuelEntry(vehicleId = vehicleId, date = LocalDate.of(2026, 5, 20), liters = 45.32, pricePerLiter = 1.859, odometer = 123456.0)
+        )
+
+        val loaded = repository.findById(saved.id!!).orElseThrow()
+        loaded.odometer shouldBe 123456.0
+        loaded.kilometers.shouldBeNull()
     }
 
     @Test
@@ -86,38 +96,6 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
 
         repository.deleteAll()
         repository.count() shouldBe 0
-    }
-
-    @Test
-    fun `findPrevious returns the chronologically preceding entry for the vehicle`() {
-        val older = repository.save(entry(date = LocalDate.of(2026, 5, 1)))
-        val newer = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
-
-        repository.findPrevious(vehicleId, newer.date, newer.id!!)?.id shouldBe older.id
-    }
-
-    @Test
-    fun `findPrevious returns null for the first entry`() {
-        val first = repository.save(entry(date = LocalDate.of(2026, 5, 1)))
-
-        repository.findPrevious(vehicleId, first.date, first.id!!).shouldBeNull()
-    }
-
-    @Test
-    fun `findPrevious breaks a same-date tie by id`() {
-        val a = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
-        val b = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
-
-        repository.findPrevious(vehicleId, b.date, b.id!!)?.id shouldBe a.id
-    }
-
-    @Test
-    fun `findPrevious ignores entries of other vehicles`() {
-        val otherVehicle = vehicles.save(Vehicle(name = "Roadster", color = "#f43f5e")).id!!
-        repository.save(entry(vehicleId = otherVehicle, date = LocalDate.of(2026, 5, 10)))
-        val mine = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
-
-        repository.findPrevious(vehicleId, mine.date, mine.id!!).shouldBeNull()
     }
 
     @Test

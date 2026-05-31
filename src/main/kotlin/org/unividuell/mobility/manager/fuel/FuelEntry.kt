@@ -11,13 +11,15 @@ data class FuelEntry(
     val date: LocalDate,
     val liters: Double,
     val pricePerLiter: Double,
-    val kilometers: Double,
+    // Exactly one of these is set, depending on the vehicle: [kilometers] is the
+    // trip distance for a trip-meter vehicle; [odometer] is the absolute reading
+    // for a total-only vehicle (its driven distance is computed from the previous
+    // reading, see FuelCalculator — so it is intentionally not stored here).
+    val kilometers: Double? = null,
+    val odometer: Double? = null,
     // created_at is populated by SQLite's DEFAULT CURRENT_TIMESTAMP; we don't
     // map it on the entity yet to avoid Instant ↔ SQLite typing friction.
 ) {
-    val consumptionPer100Km: Double
-        get() = liters / kilometers * 100.0
-
     val totalCost: Double
         get() = liters * pricePerLiter
 }

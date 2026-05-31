@@ -44,9 +44,10 @@ class VehicleController(
         @AuthenticationPrincipal principal: OAuth2User,
         @RequestParam name: String,
         @RequestParam color: String,
+        @RequestParam(defaultValue = "false") hasTripMeter: Boolean,
     ): String {
         val userId = currentUser.require(principal).id!!
-        service.create(userId, name, color)
+        service.create(userId, name, color, hasTripMeter)
         return "redirect:/vehicles"
     }
 
@@ -79,9 +80,10 @@ class VehicleController(
         @PathVariable id: Long,
         @RequestParam name: String,
         @RequestParam color: String,
+        @RequestParam(defaultValue = "false") hasTripMeter: Boolean,
     ): String {
         val userId = currentUser.require(principal).id!!
-        service.update(id, userId, name, color)
+        service.update(id, userId, name, color, hasTripMeter)
         return "redirect:/vehicles"
     }
 

@@ -62,14 +62,15 @@ class VehicleServiceIntegrationTest @Autowired constructor(
 
     @Test
     fun `update changes fields and keeps the manager`() {
-        val created = service.create(userA, "Old", "#06b6d4")
+        val created = service.create(userA, "Old", "#06b6d4", hasTripMeter = true)
 
-        service.update(created.id!!, userA, name = "New", color = "#10b981")
+        service.update(created.id!!, userA, name = "New", color = "#10b981", hasTripMeter = false)
 
         val mine = service.listFor(userA)
         mine shouldHaveSize 1
         mine.single().name shouldBe "New"
         mine.single().color shouldBe "#10b981"
+        mine.single().hasTripMeter shouldBe false
     }
 
     @Test
@@ -78,7 +79,7 @@ class VehicleServiceIntegrationTest @Autowired constructor(
 
         shouldThrow<ResponseStatusException> { service.get(created.id!!, userB) }
             .statusCode shouldBe HttpStatus.NOT_FOUND
-        shouldThrow<ResponseStatusException> { service.update(created.id!!, userB, "Hijack", "#000000") }
+        shouldThrow<ResponseStatusException> { service.update(created.id!!, userB, "Hijack", "#000000", hasTripMeter = true) }
             .statusCode shouldBe HttpStatus.NOT_FOUND
         shouldThrow<ResponseStatusException> { service.delete(created.id!!, userB) }
             .statusCode shouldBe HttpStatus.NOT_FOUND

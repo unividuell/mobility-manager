@@ -11,11 +11,12 @@ class VehicleService(
 
     fun listFor(userId: Long): List<Vehicle> = repository.findAllManagedBy(userId)
 
-    fun create(userId: Long, name: String, color: String): Vehicle =
+    fun create(userId: Long, name: String, color: String, hasTripMeter: Boolean = true): Vehicle =
         repository.save(
             Vehicle(
                 name = name.trim(),
                 color = color,
+                hasTripMeter = hasTripMeter,
                 managers = setOf(VehicleManager(userId)),
             ),
         )
@@ -29,11 +30,11 @@ class VehicleService(
         return vehicle
     }
 
-    fun update(id: Long, userId: Long, name: String, color: String): Vehicle {
+    fun update(id: Long, userId: Long, name: String, color: String, hasTripMeter: Boolean): Vehicle {
         // get(...) returns the full aggregate, so the managers set is preserved
         // through the copy/save round-trip.
         val vehicle = get(id, userId)
-        return repository.save(vehicle.copy(name = name.trim(), color = color))
+        return repository.save(vehicle.copy(name = name.trim(), color = color, hasTripMeter = hasTripMeter))
     }
 
     fun delete(id: Long, userId: Long) {

@@ -50,7 +50,7 @@
                      class="bar w-5 shrink-0 cursor-pointer rounded-t"
                      th:data-entry="${row.id}"
                      th:style="'height:' + ${row.barHeightPercent} + '%'"
-                     th:title="${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')} + ' L/100 km · ' + ${row.dateDisplay}"></div>
+                     th:title="(${row.consumption != null} ? ${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')} : '—') + ' L/100 km · ' + ${row.dateDisplay}"></div>
             </div>
         </div>
 
@@ -75,10 +75,10 @@
                         th:data-delete-url="@{/vehicles/{vid}/fuel/{id}/delete(vid=${vehicle.id},id=${row.id})}">
                         <td class="px-2 py-2 text-left text-zinc-300" th:text="${row.dateDisplay}">20.05.2026</td>
                         <td class="px-2 py-2 font-semibold text-emerald-400"
-                            th:text="${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')}">7.50</td>
+                            th:text="${row.consumption != null} ? ${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')} : '—'">7.50</td>
                         <td class="px-2 py-2" th:text="${#numbers.formatDecimal(row.liters, 1, 'POINT', 2, 'POINT')}">45.00</td>
                         <td class="col-opt px-2 py-2" th:text="${#numbers.formatDecimal(row.pricePerLiter, 1, 'POINT', 3, 'POINT')}">1.800</td>
-                        <td class="px-2 py-2" th:text="${#numbers.formatDecimal(row.kilometers, 1, 'POINT', 1, 'POINT')}">600.0</td>
+                        <td class="px-2 py-2" th:text="${row.kilometers != null} ? ${#numbers.formatDecimal(row.kilometers, 1, 'POINT', 1, 'POINT')} : '—'">600.0</td>
                         <td class="col-opt px-2 py-2" th:text="${#numbers.formatDecimal(row.totalCost, 1, 'POINT', 2, 'POINT')}">81.00</td>
                     </tr>
                 </tbody>
