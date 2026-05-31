@@ -12,12 +12,14 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
+import org.unividuell.mobility.manager.fuel.FuelService
 import org.unividuell.mobility.manager.user.CurrentUser
 
 @Controller
 @RequestMapping("/vehicles")
 class VehicleController(
     private val service: VehicleService,
+    private val fuelService: FuelService,
     private val vehicleContext: VehicleContext,
     private val currentUser: CurrentUser,
 ) {
@@ -25,7 +27,9 @@ class VehicleController(
     @GetMapping
     fun index(@AuthenticationPrincipal principal: OAuth2User, model: Model): String {
         val userId = currentUser.require(principal).id!!
-        model.addAttribute("vehicles", service.listFor(userId))
+        val vehicles = service.listFor(userId)
+        model.addAttribute("vehicles", vehicles)
+        model.addAttribute("stats", fuelService.statsByVehicle(vehicles.mapNotNull { it.id }))
         return "vehicles/index"
     }
 

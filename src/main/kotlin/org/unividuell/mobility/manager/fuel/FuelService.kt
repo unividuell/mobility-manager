@@ -57,6 +57,20 @@ class FuelService(
         repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicleId)
 
     /**
+     * Aggregated stats for each of the given vehicles, keyed by vehicle id. Every
+     * requested id is present in the result — vehicles with no refuelings yet map
+     * to empty stats — so the view can render uniformly without null checks.
+     */
+    fun statsByVehicle(vehicleIds: Collection<Long>): Map<Long, VehicleFuelStats> {
+        val byVehicle = if (vehicleIds.isEmpty()) {
+            emptyMap()
+        } else {
+            repository.findAllByVehicleIdIn(vehicleIds).groupBy { it.vehicleId }
+        }
+        return vehicleIds.associateWith { VehicleFuelStats.from(byVehicle[it].orEmpty()) }
+    }
+
+    /**
      * How [entry]'s consumption compares to the previous refueling of the same
      * vehicle, or null when it is the first one (nothing to compare against).
      */

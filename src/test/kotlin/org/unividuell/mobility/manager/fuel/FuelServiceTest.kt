@@ -348,4 +348,74 @@ class FuelServiceTest {
             delta.sign shouldBe "−"
         }
     }
+
+    @Nested
+    inner class PerVehicleStats {
+
+        private fun entry(vehicleId: Long, liters: Double, kilometers: Double) = FuelEntry(
+            id = null,
+            vehicleId = vehicleId,
+            date = LocalDate.of(2026, 1, 1),
+            liters = liters,
+            pricePerLiter = 1.7,
+            kilometers = kilometers,
+        )
+
+        @Test
+        fun `averages consumption over total distance, not per refueling`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            // 40L/800km = 5.0 and 50L/500km = 10.0; the big short tank must pull the
+            // average up, so a period average (90L/1300km ≈ 6.92) — not (5+10)/2 = 7.5.
+            every { repository.findAllByVehicleIdIn(listOf(3L)) } returns listOf(
+                entry(vehicleId = 3L, liters = 40.0, kilometers = 800.0),
+                entry(vehicleId = 3L, liters = 50.0, kilometers = 500.0),
+            )
+
+            val stats = service.statsByVehicle(listOf(3L)).getValue(3L)
+
+            stats.entryCount shouldBe 2
+            stats.totalKilometers shouldBe (1300.0 plusOrMinus 1e-9)
+            stats.averageConsumptionPer100Km!! shouldBe (6.923 plusOrMinus 1e-3)
+        }
+
+        @Test
+        fun `reports empty stats with a null average for a vehicle with no refuelings`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            every { repository.findAllByVehicleIdIn(listOf(7L)) } returns emptyList()
+
+            val stats = service.statsByVehicle(listOf(7L)).getValue(7L)
+
+            stats.entryCount shouldBe 0
+            stats.totalKilometers shouldBe (0.0 plusOrMinus 1e-9)
+            stats.averageConsumptionPer100Km.shouldBeNull()
+        }
+
+        @Test
+        fun `keys stats by vehicle and includes ids that have no entries`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            every { repository.findAllByVehicleIdIn(listOf(1L, 2L)) } returns listOf(
+                entry(vehicleId = 1L, liters = 30.0, kilometers = 600.0),
+            )
+
+            val stats = service.statsByVehicle(listOf(1L, 2L))
+
+            stats.keys shouldBe setOf(1L, 2L)
+            stats.getValue(1L).averageConsumptionPer100Km!! shouldBe (5.0 plusOrMinus 1e-9)
+            stats.getValue(2L).averageConsumptionPer100Km.shouldBeNull()
+        }
+
+        @Test
+        fun `does not touch the repository when there are no vehicles`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+
+            service.statsByVehicle(emptyList()) shouldBe emptyMap()
+
+            verify(exactly = 0) { repository.findAllByVehicleIdIn(any()) }
+            confirmVerified(repository)
+        }
+    }
 }

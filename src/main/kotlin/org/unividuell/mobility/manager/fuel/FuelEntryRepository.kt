@@ -25,4 +25,7 @@ interface FuelEntryRepository :
 
     /** All refuelings of a vehicle, newest first (date, then id as tie-break). */
     fun findAllByVehicleIdOrderByDateDescIdDesc(vehicleId: Long): List<FuelEntry>
+
+    /** Every refueling of the given vehicles in one shot, for computing per-vehicle stats. */
+    fun findAllByVehicleIdIn(vehicleIds: Collection<Long>): List<FuelEntry>
 }
