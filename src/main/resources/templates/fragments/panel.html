@@ -91,17 +91,17 @@
          data-testid="draft-panel"
          class="flex h-full flex-col gap-4">
 
-        <div class="flex flex-col gap-2">
+        <div class="grid grid-cols-2 gap-2">
 
             <div data-testid="slot"
                  th:attr="data-filled=${draft.liters != null}"
                  th:classappend="${draft.liters != null}
                     ? 'border-cyan-400 bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
-                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
-                <span class="text-sm text-zinc-400">Liter</span>
+                 class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
+                <span class="text-xs text-zinc-400">Liter</span>
                 <span th:classappend="${draft.liters != null} ? 'text-zinc-100' : 'text-zinc-600'"
-                      class="text-2xl font-semibold tabular-nums"
+                      class="text-xl font-semibold tabular-nums"
                       th:text="${draft.liters != null}
                          ? ${#numbers.formatDecimal(draft.liters, 1, 'POINT', 2, 'POINT')}
                          : '—'">—</span>
@@ -112,10 +112,10 @@
                  th:classappend="${draft.pricePerLiter != null}
                     ? 'border-cyan-400 bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
-                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
-                <span class="text-sm text-zinc-400">€/Liter</span>
+                 class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
+                <span class="text-xs text-zinc-400">€/Liter</span>
                 <span th:classappend="${draft.pricePerLiter != null} ? 'text-zinc-100' : 'text-zinc-600'"
-                      class="text-2xl font-semibold tabular-nums"
+                      class="text-xl font-semibold tabular-nums"
                       th:text="${draft.pricePerLiter != null}
                          ? ${#numbers.formatDecimal(draft.pricePerLiter, 1, 'POINT', 3, 'POINT')}
                          : '—'">—</span>
@@ -126,10 +126,10 @@
                  th:classappend="${draft.kilometers != null}
                     ? 'border-cyan-400 bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
-                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
-                <span class="text-sm text-zinc-400">Kilometer</span>
+                 class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
+                <span class="text-xs text-zinc-400">Kilometer</span>
                 <span th:classappend="${draft.kilometers != null} ? 'text-zinc-100' : 'text-zinc-600'"
-                      class="text-2xl font-semibold tabular-nums"
+                      class="text-xl font-semibold tabular-nums"
                       th:text="${draft.kilometers != null}
                          ? ${#numbers.formatDecimal(draft.kilometers, 1, 'POINT', 1, 'POINT')}
                          : '—'">—</span>
@@ -141,10 +141,10 @@
                  th:classappend="${draft.date != null}
                     ? 'border-cyan-400 bg-zinc-900'
                     : 'border-transparent bg-zinc-900/60'"
-                 class="flex items-baseline justify-between rounded-xl border-l-4 px-4 py-3 transition">
-                <span class="text-sm text-zinc-400">Datum</span>
+                 class="flex flex-col gap-0.5 rounded-lg border-l-4 px-3 py-2 transition">
+                <span class="text-xs text-zinc-400">Datum</span>
                 <span th:classappend="${draft.date != null} ? 'text-zinc-100' : 'text-zinc-600'"
-                      class="text-2xl font-semibold tabular-nums"
+                      class="text-xl font-semibold tabular-nums"
                       th:text="${dateDisplay != null} ? ${dateDisplay} : '—'">—</span>
             </div>
 
