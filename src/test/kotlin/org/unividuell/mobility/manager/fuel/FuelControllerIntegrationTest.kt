@@ -335,6 +335,75 @@ class FuelControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `edit form renders the entry's fields including both distance values`() {
+        val vid = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+        val saved = repository.save(
+            entry(vid).copy(date = LocalDate.of(2026, 5, 20), kilometers = 680.0, odometer = 123456.0),
+        )
+
+        val body = mockMvc.get("/vehicles/$vid/fuel/${saved.id}/edit") { with(login()) }
+            .andReturn().response.contentAsString
+
+        body shouldContain """name="date""""
+        body shouldContain """value="2026-05-20""""
+        body shouldContain """name="kilometers""""
+        body shouldContain """value="680.0""""
+        body shouldContain """name="odometer""""
+        body shouldContain """value="123456.0""""
+        body shouldContain """data-testid="delete-entry""""
+    }
+
+    @Test
+    fun `edit form 404s for an entry of a vehicle the user does not own`() {
+        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
+        val foreign = repository.save(entry(foreignVid))
+
+        mockMvc.get("/vehicles/$foreignVid/fuel/${foreign.id}/edit") { with(login()) }
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `updating an entry persists all fields and adds a later-tracked odometer reading`() {
+        val vid = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+        val saved = repository.save(entry(vid)) // trip entry, no odometer yet
+
+        mockMvc.post("/vehicles/$vid/fuel/${saved.id}") {
+            with(login())
+            param("date", "2026-05-22")
+            param("liters", "43.0")
+            param("pricePerLiter", "1.799")
+            param("kilometers", "700.0")
+            param("odometer", "123456")
+        }.andExpect { status { is3xxRedirection() } }
+
+        val updated = repository.findById(saved.id!!).orElseThrow()
+        updated.date shouldBe LocalDate.of(2026, 5, 22)
+        updated.liters shouldBe 43.0
+        updated.pricePerLiter shouldBe 1.799
+        updated.kilometers shouldBe 700.0
+        updated.odometer shouldBe 123456.0
+    }
+
+    @Test
+    fun `updating an entry of another user's vehicle is a no-op`() {
+        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
+        val foreign = repository.save(entry(foreignVid))
+
+        mockMvc.post("/vehicles/$foreignVid/fuel/${foreign.id}") {
+            with(login())
+            param("date", "2026-01-01")
+            param("liters", "1.0")
+            param("pricePerLiter", "1.0")
+        }
+
+        withClue("the foreign entry must be untouched") {
+            repository.findById(foreign.id!!).orElseThrow().liters shouldBe 42.5
+        }
+    }
+
+    @Test
     fun `deleting from the fuel list removes the entry and redirects`() {
         val vid = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
         val saved = repository.save(entry(vid))

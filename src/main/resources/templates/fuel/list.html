@@ -72,7 +72,7 @@
                     <tr th:each="row : ${rows}"
                         class="entry cursor-pointer border-t border-white/5"
                         th:data-entry="${row.id}"
-                        th:data-delete-url="@{/vehicles/{vid}/fuel/{id}/delete(vid=${vehicle.id},id=${row.id})}">
+                        th:data-edit-url="@{/vehicles/{vid}/fuel/{id}/edit(vid=${vehicle.id},id=${row.id})}">
                         <td class="px-2 py-2 text-left text-zinc-300" th:text="${row.dateDisplay}">20.05.2026</td>
                         <td class="px-2 py-2 font-semibold text-emerald-400"
                             th:text="${row.consumption != null} ? ${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')} : '—'">7.50</td>
@@ -86,7 +86,7 @@
         </div>
 
         <p class="mt-2 shrink-0 text-center text-[11px] text-zinc-600">
-            Tippen markiert · lange drücken löscht · Kopfzeile blendet Preis &amp; Summe ein/aus
+            Tippen markiert · lange drücken bearbeitet · Kopfzeile blendet Preis &amp; Summe ein/aus
         </p>
     </div>
 </main>
@@ -107,15 +107,6 @@
             if (row) row.scrollIntoView({ block: 'nearest' });
         }
 
-        function deleteEntry(url) {
-            if (!confirm('Diese Betankung löschen?')) return;
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = url;            // CSRF is disabled project-wide (htmx POSTs)
-            document.body.appendChild(form);
-            form.submit();
-        }
-
         // tapping the table header toggles the optional columns (€/L, total)
         const table = document.querySelector('table');
         const head = table ? table.querySelector('thead') : null;
@@ -126,7 +117,7 @@
             bar.addEventListener('click', () => select(bar.dataset.entry));
         });
 
-        // table rows: short tap selects, long press deletes
+        // table rows: short tap selects, long press opens the entry's edit screen
         document.querySelectorAll('tr.entry').forEach(row => {
             let timer = null;
             let longFired = false;
@@ -134,7 +125,7 @@
                 longFired = false;
                 timer = setTimeout(() => {
                     longFired = true;
-                    deleteEntry(row.dataset.deleteUrl);
+                    window.location.href = row.dataset.editUrl;
                 }, LONG_PRESS_MS);
             };
             const cancel = () => {

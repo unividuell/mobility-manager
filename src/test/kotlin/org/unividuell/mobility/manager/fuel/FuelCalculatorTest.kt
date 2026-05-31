@@ -61,6 +61,22 @@ class FuelCalculatorTest {
     }
 
     @Test
+    fun `an entry with both readings uses the trip distance but still feeds the odometer chain`() {
+        val first = reading(1L, LocalDate.of(2026, 1, 1), liters = 40.0, odometer = 50_000.0)
+        // a trip-meter entry that ALSO carries an odometer reading
+        val both = FuelEntry(id = 2L, vehicleId = 1L, date = LocalDate.of(2026, 2, 1), liters = 45.0, pricePerLiter = 1.7, kilometers = 600.0, odometer = 50_800.0)
+        val later = reading(3L, LocalDate.of(2026, 3, 1), liters = 42.0, odometer = 51_400.0)
+
+        val points = FuelCalculator.resolve(listOf(later, both, first))
+
+        // the middle entry's consumption uses its trip distance (600), not the gap (800)
+        points.first { it.id == 2L }.distanceKm!! shouldBe (600.0 plusOrMinus 1e-9)
+        points.first { it.id == 2L }.consumptionPer100Km!! shouldBe (45.0 / 600.0 * 100.0 plusOrMinus 1e-9)
+        // but its odometer reading still anchors the next entry's gap (51400 - 50800)
+        points.first { it.id == 3L }.distanceKm!! shouldBe (600.0 plusOrMinus 1e-9)
+    }
+
+    @Test
     fun `a non-increasing odometer reading yields no distance`() {
         val first = reading(1L, LocalDate.of(2026, 1, 1), liters = 40.0, odometer = 50_000.0)
         val typo = reading(2L, LocalDate.of(2026, 2, 1), liters = 45.0, odometer = 49_900.0) // lower than before

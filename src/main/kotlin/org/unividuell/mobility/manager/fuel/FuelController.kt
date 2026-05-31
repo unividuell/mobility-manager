@@ -2,6 +2,7 @@ package org.unividuell.mobility.manager.fuel
 
 import jakarta.servlet.http.HttpSession
 import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.server.ResponseStatusException
 import org.unividuell.mobility.manager.user.CurrentUser
 import org.unividuell.mobility.manager.vehicle.Vehicle
 import org.unividuell.mobility.manager.vehicle.VehicleContext
@@ -106,6 +108,38 @@ class FuelController(
         model.addAttribute("rows", rows)                    // table: newest first
         model.addAttribute("chartRows", rows.reversed())    // chart: oldest → newest
         return "fuel/list"
+    }
+
+    @GetMapping("/vehicles/{vehicleId}/fuel/{id}/edit")
+    fun editForm(
+        @AuthenticationPrincipal principal: OAuth2User,
+        @PathVariable vehicleId: Long,
+        @PathVariable id: Long,
+        model: Model,
+    ): String {
+        val userId = currentUser.require(principal).id!!
+        val vehicle = vehicleService.get(vehicleId, userId) // 404 unless the user owns it
+        val entry = service.find(id, setOf(vehicleId)) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        model.addAttribute("vehicle", vehicle)
+        model.addAttribute("entry", entry)
+        return "fuel/edit"
+    }
+
+    @PostMapping("/vehicles/{vehicleId}/fuel/{id}")
+    fun updateEntry(
+        @AuthenticationPrincipal principal: OAuth2User,
+        @PathVariable vehicleId: Long,
+        @PathVariable id: Long,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
+        @RequestParam liters: Double,
+        @RequestParam pricePerLiter: Double,
+        @RequestParam(required = false) kilometers: Double?,
+        @RequestParam(required = false) odometer: Double?,
+    ): String {
+        val userId = currentUser.require(principal).id!!
+        vehicleService.get(vehicleId, userId) // 404 unless the user owns it
+        service.update(id, setOf(vehicleId), date, liters, pricePerLiter, kilometers, odometer)
+        return "redirect:/vehicles/$vehicleId/fuel"
     }
 
     @PostMapping("/vehicles/{vehicleId}/fuel/{id}/delete")

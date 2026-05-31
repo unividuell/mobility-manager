@@ -99,9 +99,43 @@ class FuelService(
     }
 
     /**
+     * Loads an entry, but only when it belongs to one of the caller's vehicles —
+     * so a guessed id can't reveal another user's entry. Backs the edit screen.
+     */
+    fun find(id: Long, ownedVehicleIds: Set<Long>): FuelEntry? =
+        repository.findById(id).orElse(null)?.takeIf { it.vehicleId in ownedVehicleIds }
+
+    /**
+     * Updates the editable fields of an owned entry and returns it, or null when it
+     * isn't found / not the caller's. Both odometer readings can be set: if a trip
+     * distance is present it wins for the consumption calc (see [FuelCalculator]),
+     * while the odometer reading is still recorded for history tracking.
+     */
+    fun update(
+        id: Long,
+        ownedVehicleIds: Set<Long>,
+        date: LocalDate,
+        liters: Double,
+        pricePerLiter: Double,
+        kilometers: Double?,
+        odometer: Double?,
+    ): FuelEntry? {
+        val entry = find(id, ownedVehicleIds) ?: return null
+        return repository.save(
+            entry.copy(
+                date = date,
+                liters = liters,
+                pricePerLiter = pricePerLiter,
+                kilometers = kilometers,
+                odometer = odometer,
+            ),
+        )
+    }
+
+    /**
      * Deletes an entry, but only when it belongs to one of the caller's vehicles,
      * so a guessed id can't remove another user's entry. Used both for undoing a
-     * just-saved entry and for deleting from the per-vehicle fuel list.
+     * just-saved entry and for deleting from the entry's edit screen.
      */
     fun delete(id: Long, ownedVehicleIds: Set<Long>) {
         val entry = repository.findById(id).orElse(null) ?: return
