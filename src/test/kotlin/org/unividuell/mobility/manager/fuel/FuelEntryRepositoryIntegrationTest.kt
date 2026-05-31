@@ -120,6 +120,20 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
         repository.findPrevious(vehicleId, mine.date, mine.id!!).shouldBeNull()
     }
 
+    @Test
+    fun `findAllByVehicleId returns the vehicle's entries newest first`() {
+        val mid = repository.save(entry(date = LocalDate.of(2026, 5, 10)))
+        val newest = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
+        val oldest = repository.save(entry(date = LocalDate.of(2026, 5, 1)))
+        // another vehicle's entry must not leak in
+        val otherVehicle = vehicles.save(Vehicle(name = "Roadster", color = "#f43f5e")).id!!
+        repository.save(entry(vehicleId = otherVehicle, date = LocalDate.of(2026, 5, 15)))
+
+        val result = repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicleId)
+
+        result.map { it.id } shouldBe listOf(newest.id, mid.id, oldest.id)
+    }
+
     private fun entry(vehicleId: Long = this.vehicleId, date: LocalDate) = FuelEntry(
         vehicleId = vehicleId,
         date = date,

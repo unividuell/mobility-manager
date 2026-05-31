@@ -33,7 +33,7 @@
         <div th:each="vehicle : ${vehicles}"
              th:data-vehicle="${vehicle.id}"
              th:classappend="${selectedVehicle?.id == vehicle.id} ? 'ring-2 ring-cyan-400' : ''"
-             class="flex items-center gap-3 rounded-xl bg-zinc-900/60 px-4 py-3">
+             class="flex items-center gap-1.5 rounded-xl bg-zinc-900/60 px-3 py-3">
             <span class="h-8 w-8 shrink-0 rounded-full ring-1 ring-white/10"
                   th:style="'background-color:' + ${vehicle.color}"></span>
             <span class="flex-1 truncate text-lg font-semibold" th:text="${vehicle.name}">Mein Auto</span>
@@ -49,17 +49,39 @@
                 </button>
             </form>
 
+            <!-- actions as icons to save room: fuel list · edit · delete -->
+            <a th:href="@{/vehicles/{id}/fuel(id=${vehicle.id})}"
+               data-testid="fuel-list-link"
+               aria-label="Betankungen" title="Betankungen"
+               class="rounded-lg p-1.5 text-zinc-400 transition hover:text-cyan-300
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"></path>
+                </svg>
+            </a>
             <a th:href="@{/vehicles/{id}/edit(id=${vehicle.id})}"
-               class="rounded-lg px-2 py-1 text-sm text-zinc-400 transition hover:text-zinc-100">
-                Bearbeiten
+               aria-label="Bearbeiten" title="Bearbeiten"
+               class="rounded-lg p-1.5 text-zinc-400 transition hover:text-zinc-100
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M16.862 4.487l1.688-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931z"></path>
+                    <path d="M19.5 13.5V18A2.25 2.25 0 0 1 17.25 20.25H6A2.25 2.25 0 0 1 3.75 18V6.75A2.25 2.25 0 0 1 6 4.5h4.5"></path>
+                </svg>
             </a>
             <button type="button"
                     th:hx-delete="@{/vehicles/{id}(id=${vehicle.id})}"
                     hx-target="closest [data-vehicle]"
                     hx-swap="outerHTML"
                     hx-confirm="Fahrzeug wirklich löschen?"
-                    class="rounded-lg px-2 py-1 text-sm text-rose-400/80 transition hover:text-rose-300">
-                Löschen
+                    aria-label="Löschen" title="Löschen"
+                    class="rounded-lg p-1.5 text-rose-400/80 transition hover:text-rose-300
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 7.5h12M9.75 7.5V6A1.5 1.5 0 0 1 11.25 4.5h1.5A1.5 1.5 0 0 1 14.25 6v1.5M8.25 7.5V18A1.5 1.5 0 0 0 9.75 19.5h4.5A1.5 1.5 0 0 0 15.75 18V7.5M10.5 10.5v6M13.5 10.5v6"></path>
+                </svg>
             </button>
         </div>
 

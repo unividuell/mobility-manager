@@ -7,6 +7,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -16,6 +17,7 @@ import org.unividuell.mobility.manager.vehicle.VehicleContext
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 @Controller
 @RequestMapping("/")
@@ -78,10 +80,49 @@ class FuelController(
     ): String {
         val userId = currentUser.require(principal).id!!
         val vehicles = vehicleService.listFor(userId)
-        service.undo(id, vehicles.mapNotNull { it.id }.toSet())
+        service.delete(id, vehicles.mapNotNull { it.id }.toSet())
         renderPanel(model, vehicles, freshDraft(session, userId), saved = null)
         return "fragments/panel :: panel"
     }
+
+    @GetMapping("/vehicles/{vehicleId}/fuel")
+    fun list(
+        @AuthenticationPrincipal principal: OAuth2User,
+        @PathVariable vehicleId: Long,
+        model: Model,
+    ): String {
+        val userId = currentUser.require(principal).id!!
+        val vehicle = vehicleService.get(vehicleId, userId) // 404 unless the user owns it
+        val entries = service.history(vehicleId)            // newest first
+        val maxConsumption = entries.maxOfOrNull { it.consumptionPer100Km } ?: 0.0
+        val rows = entries.map { it.toRow(maxConsumption) }
+        model.addAttribute("vehicle", vehicle)
+        model.addAttribute("rows", rows)                    // table: newest first
+        model.addAttribute("chartRows", rows.reversed())    // chart: oldest → newest
+        return "fuel/list"
+    }
+
+    @PostMapping("/vehicles/{vehicleId}/fuel/{id}/delete")
+    fun deleteEntry(
+        @AuthenticationPrincipal principal: OAuth2User,
+        @PathVariable vehicleId: Long,
+        @PathVariable id: Long,
+    ): String {
+        val userId = currentUser.require(principal).id!!
+        service.delete(id, vehicleService.listFor(userId).mapNotNull { it.id }.toSet())
+        return "redirect:/vehicles/$vehicleId/fuel"
+    }
+
+    private fun FuelEntry.toRow(maxConsumption: Double) = FuelListRow(
+        id = id!!,
+        dateDisplay = date.format(SHORT_DATE),
+        consumption = consumptionPer100Km,
+        liters = liters,
+        pricePerLiter = pricePerLiter,
+        kilometers = kilometers,
+        totalCost = totalCost,
+        barHeightPercent = if (maxConsumption > 0) (consumptionPer100Km / maxConsumption * 100).roundToInt() else 0,
+    )
 
     /** An empty draft seeded with the selected vehicle and today's date. */
     private fun freshDraft(session: HttpSession, userId: Long): FuelDraft =
@@ -113,5 +154,6 @@ class FuelController(
 
     private companion object {
         val GERMAN_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+        val SHORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yy")
     }
 }

@@ -52,6 +52,10 @@ class FuelService(
         }
     }
 
+    /** All refuelings of a vehicle, newest first — backing the per-vehicle fuel list. */
+    fun history(vehicleId: Long): List<FuelEntry> =
+        repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicleId)
+
     /**
      * How [entry]'s consumption compares to the previous refueling of the same
      * vehicle, or null when it is the first one (nothing to compare against).
@@ -65,10 +69,11 @@ class FuelService(
     }
 
     /**
-     * Undoes a just-saved entry. Deletes it only when it belongs to one of the
-     * caller's vehicles, so a guessed id can't remove another user's entry.
+     * Deletes an entry, but only when it belongs to one of the caller's vehicles,
+     * so a guessed id can't remove another user's entry. Used both for undoing a
+     * just-saved entry and for deleting from the per-vehicle fuel list.
      */
-    fun undo(id: Long, ownedVehicleIds: Set<Long>) {
+    fun delete(id: Long, ownedVehicleIds: Set<Long>) {
         val entry = repository.findById(id).orElse(null) ?: return
         if (entry.vehicleId in ownedVehicleIds) {
             repository.deleteById(id)

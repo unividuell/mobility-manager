@@ -251,7 +251,7 @@ class FuelServiceTest {
     }
 
     @Nested
-    inner class UndoingAnEntry {
+    inner class DeletingAnEntry {
 
         private fun entry(id: Long, vehicleId: Long) = FuelEntry(
             id = id,
@@ -268,7 +268,7 @@ class FuelServiceTest {
             val service = newService(repository)
             every { repository.findById(7L) } returns Optional.of(entry(id = 7L, vehicleId = 3L))
 
-            service.undo(7L, ownedVehicleIds = setOf(3L, 4L))
+            service.delete(7L, ownedVehicleIds = setOf(3L, 4L))
 
             verify(exactly = 1) { repository.deleteById(7L) }
         }
@@ -279,7 +279,7 @@ class FuelServiceTest {
             val service = newService(repository)
             every { repository.findById(7L) } returns Optional.of(entry(id = 7L, vehicleId = 99L))
 
-            service.undo(7L, ownedVehicleIds = setOf(3L, 4L))
+            service.delete(7L, ownedVehicleIds = setOf(3L, 4L))
 
             verify(exactly = 0) { repository.deleteById(any()) }
         }
@@ -290,7 +290,7 @@ class FuelServiceTest {
             val service = newService(repository)
             every { repository.findById(7L) } returns Optional.empty()
 
-            service.undo(7L, ownedVehicleIds = setOf(3L))
+            service.delete(7L, ownedVehicleIds = setOf(3L))
 
             verify(exactly = 0) { repository.deleteById(any()) }
         }

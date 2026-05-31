@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#09090b">
+    <meta name="color-scheme" content="dark">
+    <title th:text="'Betankungen · ' + ${vehicle.name}">Betankungen</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        /* Selection highlight is toggled by JS at runtime, so it must NOT rely on
+           Tailwind classes (the browser CDN only generates classes present at load). */
+        .bar { background-color: #3f3f46; min-height: 0.25rem; transition: background-color .15s; }
+        .bar.selected { background-color: #22d3ee; }
+        tr.entry { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        tr.entry.selected { background-color: rgba(34, 211, 238, .14); }
+        /* Optional columns (€/L, total) hidden by default; tapping the header toggles them. */
+        .col-opt { display: none; }
+        table.cols-expanded .col-opt { display: table-cell; }
+    </style>
+</head>
+<body class="h-full overflow-hidden bg-zinc-950 text-zinc-100 antialiased selection:bg-cyan-400/30">
+<main class="mx-auto flex h-full w-full max-w-md flex-col px-4
+             pt-[max(env(safe-area-inset-top),1rem)]
+             pb-[max(env(safe-area-inset-bottom),1rem)]">
+
+    <div th:replace="~{fragments/header :: header(home=true)}"></div>
+
+    <h1 class="mb-3 flex items-center gap-2 text-2xl font-extrabold tracking-tight">
+        <span class="h-4 w-4 shrink-0 rounded-full ring-1 ring-white/10"
+              th:style="'background-color:' + ${vehicle.color}"></span>
+        <span th:text="${vehicle.name}">Kombi</span>
+    </h1>
+
+    <!-- Empty state -->
+    <p th:if="${rows.isEmpty()}" class="rounded-xl bg-zinc-900/60 px-4 py-8 text-center text-zinc-500">
+        Noch keine Betankungen.
+    </p>
+
+    <div th:unless="${rows.isEmpty()}" class="flex min-h-0 flex-1 flex-col">
+
+        <!-- Chart: one bar per refueling, oldest → newest, horizontally scrollable -->
+        <p class="mb-1 text-xs uppercase tracking-wide text-zinc-500">Verbrauch L/100 km · alt → neu</p>
+        <div class="shrink-0 overflow-x-auto pb-3">
+            <div class="flex h-28 items-end gap-1">
+                <div th:each="row : ${chartRows}"
+                     class="bar w-5 shrink-0 cursor-pointer rounded-t"
+                     th:data-entry="${row.id}"
+                     th:style="'height:' + ${row.barHeightPercent} + '%'"
+                     th:title="${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')} + ' L/100 km · ' + ${row.dateDisplay}"></div>
+            </div>
+        </div>
+
+        <!-- Table: newest first; this is the only vertically scrolling region -->
+        <div class="min-h-0 flex-1 overflow-y-auto rounded-xl border border-white/5">
+            <table class="w-full text-right text-xs tabular-nums">
+                <thead class="sticky top-0 cursor-pointer bg-zinc-900 text-[10px] uppercase tracking-wide text-zinc-500"
+                       title="Preis & Summe ein-/ausblenden">
+                    <tr>
+                        <th class="px-2 py-2 text-left">Datum</th>
+                        <th class="px-2 py-2">L/100</th>
+                        <th class="px-2 py-2">Liter</th>
+                        <th class="col-opt px-2 py-2">€/L</th>
+                        <th class="px-2 py-2">km</th>
+                        <th class="col-opt px-2 py-2">€</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${rows}"
+                        class="entry cursor-pointer border-t border-white/5"
+                        th:data-entry="${row.id}"
+                        th:data-delete-url="@{/vehicles/{vid}/fuel/{id}/delete(vid=${vehicle.id},id=${row.id})}">
+                        <td class="px-2 py-2 text-left text-zinc-300" th:text="${row.dateDisplay}">20.05.2026</td>
+                        <td class="px-2 py-2 font-semibold text-emerald-400"
+                            th:text="${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')}">7.50</td>
+                        <td class="px-2 py-2" th:text="${#numbers.formatDecimal(row.liters, 1, 'POINT', 2, 'POINT')}">45.00</td>
+                        <td class="col-opt px-2 py-2" th:text="${#numbers.formatDecimal(row.pricePerLiter, 1, 'POINT', 3, 'POINT')}">1.800</td>
+                        <td class="px-2 py-2" th:text="${#numbers.formatDecimal(row.kilometers, 1, 'POINT', 1, 'POINT')}">600.0</td>
+                        <td class="col-opt px-2 py-2" th:text="${#numbers.formatDecimal(row.totalCost, 1, 'POINT', 2, 'POINT')}">81.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="mt-2 shrink-0 text-center text-[11px] text-zinc-600">
+            Tippen markiert · lange drücken löscht · Kopfzeile blendet Preis &amp; Summe ein/aus
+        </p>
+    </div>
+</main>
+
+<script>
+    (function () {
+        const LONG_PRESS_MS = 500;
+
+        function clearSelection() {
+            document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+        }
+
+        function select(id) {
+            clearSelection();
+            document.querySelectorAll('[data-entry="' + id + '"]').forEach(el => el.classList.add('selected'));
+            // bring the matching table row into view when selecting from the chart
+            const row = document.querySelector('tr[data-entry="' + id + '"]');
+            if (row) row.scrollIntoView({ block: 'nearest' });
+        }
+
+        function deleteEntry(url) {
+            if (!confirm('Diese Betankung löschen?')) return;
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = url;            // CSRF is disabled project-wide (htmx POSTs)
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // tapping the table header toggles the optional columns (€/L, total)
+        const table = document.querySelector('table');
+        const head = table ? table.querySelector('thead') : null;
+        if (head) head.addEventListener('click', () => table.classList.toggle('cols-expanded'));
+
+        // chart bars: short tap selects
+        document.querySelectorAll('.bar[data-entry]').forEach(bar => {
+            bar.addEventListener('click', () => select(bar.dataset.entry));
+        });
+
+        // table rows: short tap selects, long press deletes
+        document.querySelectorAll('tr.entry').forEach(row => {
+            let timer = null;
+            let longFired = false;
+            const start = () => {
+                longFired = false;
+                timer = setTimeout(() => {
+                    longFired = true;
+                    deleteEntry(row.dataset.deleteUrl);
+                }, LONG_PRESS_MS);
+            };
+            const cancel = () => {
+                if (timer) { clearTimeout(timer); timer = null; }
+            };
+            row.addEventListener('pointerdown', start);
+            row.addEventListener('pointerup', () => {
+                cancel();
+                if (!longFired) select(row.dataset.entry);
+            });
+            row.addEventListener('pointerleave', cancel);
+            row.addEventListener('pointercancel', cancel);
+            row.addEventListener('contextmenu', e => e.preventDefault());
+        });
+    })();
+</script>
+</body>
+</html>

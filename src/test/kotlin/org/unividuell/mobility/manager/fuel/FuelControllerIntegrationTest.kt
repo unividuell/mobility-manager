@@ -283,6 +283,51 @@ class FuelControllerIntegrationTest @Autowired constructor(
         withClue("the foreign entry must survive") { repository.count() shouldBe 1 }
     }
 
+    @Test
+    fun `fuel list renders a table row and a chart bar per entry`() {
+        val vid = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+        repository.save(entry(vid).copy(date = LocalDate.of(2026, 5, 1)))
+        repository.save(entry(vid).copy(date = LocalDate.of(2026, 5, 20)))
+
+        val body = mockMvc.get("/vehicles/$vid/fuel") { with(login()) }
+            .andReturn().response.contentAsString
+
+        body shouldContain "Kombi"
+        body.occurrencesOf("""class="bar""") shouldBe 2
+        body.occurrencesOf("""class="entry""") shouldBe 2
+    }
+
+    @Test
+    fun `fuel list 404s for a vehicle the user does not own`() {
+        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
+
+        mockMvc.get("/vehicles/$foreignVid/fuel") { with(login()) }
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `deleting from the fuel list removes the entry and redirects`() {
+        val vid = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+        val saved = repository.save(entry(vid))
+
+        mockMvc.post("/vehicles/$vid/fuel/${saved.id}/delete") { with(login()) }
+            .andExpect { status { is3xxRedirection() } }
+
+        repository.count() shouldBe 0
+    }
+
+    @Test
+    fun `deleting another user's entry from the list is a no-op`() {
+        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
+        val foreign = repository.save(entry(foreignVid))
+
+        mockMvc.post("/vehicles/$foreignVid/fuel/${foreign.id}/delete") { with(login()) }
+
+        withClue("the foreign entry must survive") { repository.count() shouldBe 1 }
+    }
+
     private fun entry(vehicleId: Long) = FuelEntry(
         vehicleId = vehicleId,
         date = LocalDate.now(),

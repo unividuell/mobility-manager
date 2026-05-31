@@ -57,6 +57,16 @@ class VehicleControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `index links each vehicle to its fuel list`() {
+        val id = service.create(userId, "Kombi", "#06b6d4").id!!
+
+        val body = mockMvc.get("/vehicles") { with(login()) }.andReturn().response.contentAsString
+
+        body shouldContain """data-testid="fuel-list-link""""
+        body shouldContain "/vehicles/$id/fuel"
+    }
+
+    @Test
     fun `create persists a vehicle for the current user and redirects`() {
         mockMvc.post("/vehicles") {
             with(login())

@@ -22,4 +22,7 @@ interface FuelEntryRepository :
         """,
     )
     fun findPrevious(vehicleId: Long, date: LocalDate, id: Long): FuelEntry?
+
+    /** All refuelings of a vehicle, newest first (date, then id as tie-break). */
+    fun findAllByVehicleIdOrderByDateDescIdDesc(vehicleId: Long): List<FuelEntry>
 }
