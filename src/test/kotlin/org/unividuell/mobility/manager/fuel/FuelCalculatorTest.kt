@@ -100,11 +100,21 @@ class FuelCalculatorTest {
     }
 
     @Test
-    fun `flags a low consumption outlier too`() {
+    fun `flags a roughly halved consumption as an outlier`() {
+        // a near-halving (2.0 vs median ~6.15) is well below median / 1.75
         val points = FuelCalculator.resolve(consumptionEntries(6.0, 6.1, 6.2, 6.3, 6.4, 2.0))
 
         points.count { it.isOutlier } shouldBe 1
         points.first { it.isOutlier }.consumptionPer100Km!! shouldBe (2.0 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `keeps a moderately high value within the ratio band`() {
+        // ~1.5x the median (12.5 vs ~8.25) is ordinary spread, not an outlier —
+        // this is the real-world case the spread-normalised rule got wrong
+        val points = FuelCalculator.resolve(consumptionEntries(8.0, 8.1, 8.2, 8.3, 8.4, 12.5))
+
+        points.count { it.isOutlier } shouldBe 0
     }
 
     @Test
@@ -117,7 +127,6 @@ class FuelCalculatorTest {
 
     @Test
     fun `identical consumptions yield no outliers`() {
-        // MAD (and mean abs deviation) are 0 here; must not divide-by-zero into all-outliers
         val points = FuelCalculator.resolve(consumptionEntries(6.0, 6.0, 6.0, 6.0, 6.0, 6.0))
 
         points.count { it.isOutlier } shouldBe 0

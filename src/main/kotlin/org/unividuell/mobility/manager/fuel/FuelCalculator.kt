@@ -1,7 +1,5 @@
 package org.unividuell.mobility.manager.fuel
 
-import kotlin.math.abs
-
 /**
  * Turns raw [FuelEntry] rows into [FuelPoint]s with the driven distance and
  * consumption resolved. This is where the two vehicle modes converge:
@@ -23,10 +21,12 @@ object FuelCalculator {
     // "normal" range; below this every refueling counts.
     private const val MIN_POINTS_FOR_OUTLIERS = 5
 
-    // Modified z-score cutoff (Iglewicz–Hoaglin): |z| > 3.5 is the usual threshold.
-    private const val MODIFIED_Z_THRESHOLD = 3.5
-    private const val MAD_SCALE = 0.6745          // 0.75 quantile of the normal dist
-    private const val MEAN_AD_SCALE = 1.2533      // sqrt(pi/2); used when MAD collapses to 0
+    // An outlier is grossly disproportionate to the typical consumption: more than
+    // this factor above the median, or below median / factor. A ratio band (rather
+    // than a spread-normalised z-score) is deliberate — it judges "how far off the
+    // typical value" independent of how tightly or loosely a given vehicle varies,
+    // and treats a near-halving as just as extreme as a near-doubling.
+    private const val OUTLIER_RATIO = 1.75
 
     /**
      * Resolves [entries] (given in any order) and returns the points in the SAME
@@ -68,32 +68,25 @@ object FuelCalculator {
     }
 
     /**
-     * Flags points whose consumption is a statistical outlier using a robust
-     * median + MAD modified z-score — resistant to the very outliers we want to
-     * catch, unlike a mean/standard-deviation rule. Needs at least
-     * [MIN_POINTS_FOR_OUTLIERS] points with a consumption; otherwise nothing is
-     * flagged. When the MAD collapses to 0 (many identical values) it falls back
-     * to the mean absolute deviation, and if that is 0 too (all identical) there
-     * are no outliers.
+     * Flags points whose consumption sits outside a multiplicative band around the
+     * median — above `median * OUTLIER_RATIO` or below `median / OUTLIER_RATIO`.
+     * The median is robust (the outliers themselves barely move it), and the ratio
+     * band catches values that are grossly disproportionate to the typical one
+     * while leaving a vehicle's ordinary spread untouched. Needs at least
+     * [MIN_POINTS_FOR_OUTLIERS] points with a consumption; otherwise nothing is flagged.
      */
     private fun markOutliers(points: List<FuelPoint>): List<FuelPoint> {
         val consumptions = points.mapNotNull { it.consumptionPer100Km }
         if (consumptions.size < MIN_POINTS_FOR_OUTLIERS) return points
 
         val median = median(consumptions)
-        val deviations = consumptions.map { abs(it - median) }
-        val mad = median(deviations)
-        val scale = when {
-            mad > 0.0 -> MAD_SCALE / mad
-            else -> {
-                val meanAd = deviations.average()
-                if (meanAd > 0.0) 1.0 / (MEAN_AD_SCALE * meanAd) else return points
-            }
-        }
+        if (median <= 0.0) return points
+        val upper = median * OUTLIER_RATIO
+        val lower = median / OUTLIER_RATIO
 
         return points.map { point ->
             val consumption = point.consumptionPer100Km
-            if (consumption != null && abs((consumption - median) * scale) > MODIFIED_Z_THRESHOLD) {
+            if (consumption != null && (consumption > upper || consumption < lower)) {
                 point.copy(isOutlier = true)
             } else {
                 point
