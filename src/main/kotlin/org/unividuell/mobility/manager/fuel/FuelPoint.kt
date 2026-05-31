@@ -14,11 +14,16 @@ import java.time.LocalDate
  * [distanceKm] and [consumptionPer100Km] are null when no distance can be
  * established: the very first odometer reading has no predecessor to measure
  * against (tank-to-tank: that entry's litres covered an unknown distance).
+ *
+ * [isOutlier] flags a refueling whose consumption is a statistical outlier within
+ * the vehicle's history (see [FuelCalculator]); such entries are kept and shown
+ * but excluded from the average-consumption figure.
  */
 data class FuelPoint(
     val entry: FuelEntry,
     val distanceKm: Double?,
     val consumptionPer100Km: Double?,
+    val isOutlier: Boolean = false,
 ) {
     val id: Long? get() = entry.id
     val date: LocalDate get() = entry.date

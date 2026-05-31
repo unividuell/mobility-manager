@@ -18,16 +18,27 @@
          th:object="${saved}">
 
         <div class="flex flex-1 flex-col items-center justify-center gap-1 text-center">
-            <!-- consumption is unknown for the very first odometer reading (no prior distance) -->
+            <!-- consumption is unknown for the very first odometer reading (no prior distance);
+                 an outlier is shown greyed-out (it doesn't represent normal consumption) -->
             <span th:if="${saved.consumptionPer100Km != null}"
-                  class="text-7xl font-extrabold tabular-nums tracking-tight text-emerald-400 sm:text-8xl"
+                  th:classappend="${saved.isOutlier} ? 'text-zinc-500' : 'text-emerald-400'"
+                  class="text-7xl font-extrabold tabular-nums tracking-tight sm:text-8xl"
                   th:text="${#numbers.formatDecimal(saved.consumptionPer100Km, 1, 'POINT', 2, 'POINT')}">8.72</span>
             <span th:unless="${saved.consumptionPer100Km != null}"
                   class="text-7xl font-extrabold tabular-nums tracking-tight text-zinc-600 sm:text-8xl">—</span>
             <span class="text-base text-zinc-400 sm:text-lg">L / 100 km</span>
 
-            <!-- consumption trend vs. the previous refueling (down = greener = good) -->
-            <span th:if="${consumptionDelta != null}" data-testid="consumption-delta"
+            <!-- this refueling is a consumption outlier — flag it and note it won't skew the average -->
+            <span th:if="${saved.isOutlier}" data-testid="outlier-badge"
+                  class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1
+                         text-sm font-medium text-amber-400">
+                <span aria-hidden="true">⚠</span>
+                Ausreißer · zählt nicht zum Ø-Verbrauch
+            </span>
+
+            <!-- consumption trend vs. the previous refueling (down = greener = good);
+                 suppressed for outliers, whose comparison would be misleading -->
+            <span th:if="${consumptionDelta != null and !saved.isOutlier}" data-testid="consumption-delta"
                   th:classappend="${consumptionDelta.increased ? 'text-rose-400' : (consumptionDelta.decreased ? 'text-emerald-400' : 'text-zinc-400')}"
                   class="mt-1 flex items-center gap-1.5 text-sm font-medium tabular-nums">
                 <span aria-hidden="true"

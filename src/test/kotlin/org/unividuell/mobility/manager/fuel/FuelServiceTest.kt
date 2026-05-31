@@ -444,5 +444,23 @@ class FuelServiceTest {
             verify(exactly = 0) { repository.findAllByVehicleIdIn(any()) }
             confirmVerified(repository)
         }
+
+        @Test
+        fun `excludes outliers from the average but keeps them in the distance total`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            // km fixed at 100 so consumption == litres: five ~6 and one 12.8 (outlier)
+            every { repository.findAllByVehicleIdIn(listOf(3L)) } returns listOf(6.0, 6.1, 6.2, 6.3, 6.4, 12.8)
+                .map { entry(vehicleId = 3L, liters = it, kilometers = 100.0) }
+
+            val stats = service.statsByVehicle(listOf(3L)).getValue(3L)
+
+            stats.entryCount shouldBe 6
+            stats.outlierCount shouldBe 1
+            // average over the five normal tanks: 31 L / 500 km * 100 = 6.2 (12.8 excluded)
+            stats.averageConsumptionPer100Km!! shouldBe (6.2 plusOrMinus 1e-9)
+            // the distance total still counts all six refuelings
+            stats.totalKilometers shouldBe (600.0 plusOrMinus 1e-9)
+        }
     }
 }

@@ -102,11 +102,16 @@ class FuelController(
         val userId = currentUser.require(principal).id!!
         val vehicle = vehicleService.get(vehicleId, userId) // 404 unless the user owns it
         val points = service.timeline(vehicleId)            // newest first, distance/consumption resolved
-        val maxConsumption = points.mapNotNull { it.consumptionPer100Km }.maxOrNull() ?: 0.0
-        val rows = points.map { it.toRow(maxConsumption) }
+        // scale bars to the largest NON-outlier consumption, so one freak value
+        // doesn't squash every normal bar; outliers are clamped to full height.
+        val scaleMax = points.filter { !it.isOutlier }.mapNotNull { it.consumptionPer100Km }.maxOrNull()
+            ?: points.mapNotNull { it.consumptionPer100Km }.maxOrNull()
+            ?: 0.0
+        val rows = points.map { it.toRow(scaleMax) }
         model.addAttribute("vehicle", vehicle)
         model.addAttribute("rows", rows)                    // table: newest first
         model.addAttribute("chartRows", rows.reversed())    // chart: oldest → newest
+        model.addAttribute("hasOutliers", rows.any { it.outlier })
         return "fuel/list"
     }
 
@@ -162,10 +167,12 @@ class FuelController(
         kilometers = distanceKm,
         totalCost = totalCost,
         barHeightPercent = if (maxConsumption > 0 && consumptionPer100Km != null) {
-            (consumptionPer100Km / maxConsumption * 100).roundToInt()
+            // clamp so an outlier taller than the non-outlier scale just maxes out
+            (consumptionPer100Km / maxConsumption * 100).roundToInt().coerceAtMost(100)
         } else {
             0
         },
+        outlier = isOutlier,
     )
 
     /** An empty draft seeded with the selected vehicle's id and trip-meter mode, plus today's date. */

@@ -60,6 +60,9 @@
                         <span th:unless="${s.averageConsumptionPer100Km != null}"
                               class="text-xl font-semibold text-zinc-600">—</span>
                     </div>
+                    <!-- outliers are dropped from the average; tell the user why it shifts -->
+                    <div th:if="${s.outlierCount > 0}" class="mt-0.5 text-[10px] text-zinc-600"
+                         th:text="'ohne ' + ${s.outlierCount} + ' Ausreißer'">ohne 1 Ausreißer</div>
                 </div>
                 <div class="rounded-xl bg-zinc-950/40 px-3 py-2.5">
                     <div class="text-[10px] uppercase tracking-wide text-zinc-500">Strecke</div>

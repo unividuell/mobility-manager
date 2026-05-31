@@ -15,6 +15,9 @@
            It tracks the vehicle accent via --accent, falling back to brand cyan. */
         .bar { background-color: #3f3f46; min-height: 0.25rem; transition: background-color .15s; }
         .bar.selected { background-color: var(--accent, #22d3ee); }
+        /* outliers are excluded from the average; show them faded with diagonal stripes */
+        .bar.outlier { opacity: .5; background-image: repeating-linear-gradient(
+            45deg, transparent, transparent 2px, rgba(0,0,0,.4) 2px, rgba(0,0,0,.4) 4px); }
         tr.entry { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         tr.entry.selected { background-color: color-mix(in srgb, var(--accent, #22d3ee) 14%, transparent); }
         /* Optional columns (€/L, total) hidden by default; tapping the header toggles them. */
@@ -43,14 +46,21 @@
     <div th:unless="${rows.isEmpty()}" class="flex min-h-0 flex-1 flex-col">
 
         <!-- Chart: one bar per refueling, oldest → newest, horizontally scrollable -->
-        <p class="mb-1 text-xs uppercase tracking-wide text-zinc-500">Verbrauch L/100 km · alt → neu</p>
+        <p class="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-zinc-500">
+            <span>Verbrauch L/100 km · alt → neu</span>
+            <span th:if="${hasOutliers}" class="flex items-center gap-1 normal-case tracking-normal text-zinc-600">
+                <span class="bar outlier inline-block h-3 w-3 shrink-0 rounded-sm" style="opacity:.5"></span>
+                Ausreißer (nicht im Ø)
+            </span>
+        </p>
         <div class="shrink-0 overflow-x-auto pb-3">
             <div class="flex h-28 items-end gap-1">
                 <div th:each="row : ${chartRows}"
                      class="bar w-5 shrink-0 cursor-pointer rounded-t"
+                     th:classappend="${row.outlier} ? 'outlier'"
                      th:data-entry="${row.id}"
                      th:style="'height:' + ${row.barHeightPercent} + '%'"
-                     th:title="(${row.consumption != null} ? ${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')} : '—') + ' L/100 km · ' + ${row.dateDisplay}"></div>
+                     th:title="(${row.consumption != null} ? ${#numbers.formatDecimal(row.consumption, 1, 'POINT', 2, 'POINT')} : '—') + ' L/100 km · ' + ${row.dateDisplay} + (${row.outlier} ? ' · Ausreißer' : '')"></div>
             </div>
         </div>
 

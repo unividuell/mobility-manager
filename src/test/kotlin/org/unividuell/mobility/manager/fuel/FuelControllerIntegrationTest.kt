@@ -246,6 +246,28 @@ class FuelControllerIntegrationTest @Autowired constructor(
         second shouldContain "▲"
         second shouldContain "+2.50 L/100 km"
         second shouldContain "text-rose-400" // a rise is shown in red
+        second shouldNotContain "outlier-badge" // too few refuelings to judge outliers
+    }
+
+    @Test
+    fun `result screen flags the just-saved refueling when it is a consumption outlier`() {
+        val vid = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+        // five normal refuelings already on record: 30 L / 500 km = 6.0 L/100km each
+        repeat(5) { i ->
+            repository.save(entry(vid).copy(date = LocalDate.of(2026, 1, i + 1), liters = 30.0, kilometers = 500.0))
+        }
+
+        // now enter a sixth that is wildly off: 80 L / 500 km = 16.0 L/100km
+        postValue(value = "80")
+        postValue(value = "500", liters = "80")
+        val body = postValue(value = "1.80", liters = "80", kilometers = "500.0")
+
+        body shouldContain """data-testid="result-panel""""
+        body shouldContain """data-testid="outlier-badge""""
+        body shouldContain "Ausreißer"
+        // the figure is greyed out, not emerald, and no comparison is shown for an outlier
+        body shouldNotContain "text-emerald-400"
+        body shouldNotContain "consumption-delta"
     }
 
     @Test

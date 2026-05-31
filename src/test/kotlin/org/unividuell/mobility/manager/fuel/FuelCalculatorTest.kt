@@ -86,4 +86,40 @@ class FuelCalculatorTest {
         points.first { it.id == 2L }.distanceKm.shouldBeNull()
         points.first { it.id == 2L }.consumptionPer100Km.shouldBeNull()
     }
+
+    // For the outlier cases km is fixed at 100 so consumption (L/100km) equals litres.
+    private fun consumptionEntries(vararg liters: Double): List<FuelEntry> =
+        liters.mapIndexed { i, l -> trip(id = (i + 1).toLong(), date = LocalDate.of(2026, 1, i + 1), liters = l, kilometers = 100.0) }
+
+    @Test
+    fun `flags a high consumption outlier once there are at least five refuelings`() {
+        val points = FuelCalculator.resolve(consumptionEntries(6.0, 6.1, 6.2, 6.3, 6.4, 12.8))
+
+        points.count { it.isOutlier } shouldBe 1
+        points.first { it.isOutlier }.consumptionPer100Km!! shouldBe (12.8 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `flags a low consumption outlier too`() {
+        val points = FuelCalculator.resolve(consumptionEntries(6.0, 6.1, 6.2, 6.3, 6.4, 2.0))
+
+        points.count { it.isOutlier } shouldBe 1
+        points.first { it.isOutlier }.consumptionPer100Km!! shouldBe (2.0 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `does not flag anything with fewer than five refuelings`() {
+        // the 12.8 is wildly off but there isn't enough history to judge yet
+        val points = FuelCalculator.resolve(consumptionEntries(6.0, 6.1, 6.2, 12.8))
+
+        points.count { it.isOutlier } shouldBe 0
+    }
+
+    @Test
+    fun `identical consumptions yield no outliers`() {
+        // MAD (and mean abs deviation) are 0 here; must not divide-by-zero into all-outliers
+        val points = FuelCalculator.resolve(consumptionEntries(6.0, 6.0, 6.0, 6.0, 6.0, 6.0))
+
+        points.count { it.isOutlier } shouldBe 0
+    }
 }

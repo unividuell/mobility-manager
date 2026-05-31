@@ -8,6 +8,9 @@ package org.unividuell.mobility.manager.fuel
  *
  * [consumption] and [kilometers] are nullable: an odometer vehicle's first
  * refueling has no measurable distance to compute either from (its bar is empty).
+ *
+ * [outlier] marks a consumption outlier — rendered as a faded, striped bar and
+ * excluded from the vehicle's average (but still listed).
  */
 data class FuelListRow(
     val id: Long,
@@ -18,4 +21,5 @@ data class FuelListRow(
     val kilometers: Double?,
     val totalCost: Double,
     val barHeightPercent: Int,
+    val outlier: Boolean,
 )
