@@ -201,6 +201,48 @@ class FuelControllerIntegrationTest @Autowired constructor(
         )
     }
 
+    @Test
+    fun `undo removes the caller's just-saved entry and returns an empty draft`() {
+        val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+        val saved = repository.save(entry(vehicleId))
+        repository.count() shouldBe 1
+
+        val body = postUndo(id = saved.id!!)
+
+        repository.count() shouldBe 0
+        body shouldContain """data-testid="draft-panel""""
+        body shouldContainAll listOf(
+            """name="liters" value=""""",
+            """name="pricePerLiter" value=""""",
+            """name="kilometers" value=""""",
+        )
+    }
+
+    @Test
+    fun `undo does not delete an entry that belongs to another user's vehicle`() {
+        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val foreignVehicleId = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
+        val foreign = repository.save(entry(foreignVehicleId))
+
+        // octocat (the logged-in user) tries to undo the stranger's entry
+        postUndo(id = foreign.id!!)
+
+        withClue("the foreign entry must survive") { repository.count() shouldBe 1 }
+    }
+
+    private fun entry(vehicleId: Long) = FuelEntry(
+        vehicleId = vehicleId,
+        date = LocalDate.now(),
+        liters = 42.5,
+        pricePerLiter = 1.749,
+        kilometers = 680.0,
+    )
+
+    private fun postUndo(id: Long): String = mockMvc.post("/fuel/undo") {
+        with(login())
+        param("id", id.toString())
+    }.andReturn().response.contentAsString
+
     private fun postValue(
         value: String,
         liters: String = "",

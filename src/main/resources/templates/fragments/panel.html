@@ -52,14 +52,25 @@
             </div>
         </dl>
 
-        <form hx-post="/fuel/reset" hx-target="#panel" hx-swap="outerHTML" class="mt-auto">
-            <button type="submit"
-                    class="w-full rounded-xl bg-emerald-500 px-4 py-4 text-base font-semibold text-emerald-950
-                           transition active:scale-[0.98] hover:bg-emerald-400
-                           focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300">
-                Nächste Tankung
-            </button>
-        </form>
+        <div class="mt-auto flex flex-col items-center gap-3">
+            <form hx-post="/fuel/reset" hx-target="#panel" hx-swap="outerHTML" class="w-full">
+                <button type="submit"
+                        class="w-full rounded-xl bg-emerald-500 px-4 py-4 text-base font-semibold text-emerald-950
+                               transition active:scale-[0.98] hover:bg-emerald-400
+                               focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300">
+                    Nächste Tankung
+                </button>
+            </form>
+            <form hx-post="/fuel/undo" hx-target="#panel" hx-swap="outerHTML">
+                <input type="hidden" name="id" th:value="${saved.id}">
+                <button type="submit" data-testid="undo-button"
+                        class="rounded text-sm text-zinc-500 underline-offset-4 transition
+                               hover:text-zinc-300 hover:underline
+                               focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500">
+                    Eingabe rückgängig machen
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- ============================================================ -->

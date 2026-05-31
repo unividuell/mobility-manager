@@ -59,6 +59,17 @@ class FuelService(
         }
     }
 
+    /**
+     * Undoes a just-saved entry. Deletes it only when it belongs to one of the
+     * caller's vehicles, so a guessed id can't remove another user's entry.
+     */
+    fun undo(id: Long, ownedVehicleIds: Set<Long>) {
+        val entry = repository.findById(id).orElse(null) ?: return
+        if (entry.vehicleId in ownedVehicleIds) {
+            repository.deleteById(id)
+        }
+    }
+
     // Accepts ISO (2026-05-29), German day-first dates (29.5.2026 / 29.05.2026),
     // and a 2-digit year mapped into the last 99 years (29.5.26 → 2026, 20.5.99 → 1999).
     private fun parseDate(raw: String): LocalDate? {

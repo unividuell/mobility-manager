@@ -61,6 +61,14 @@ class FuelController(
         return "fragments/panel :: panel"
     }
 
+    @PostMapping("/fuel/undo")
+    fun undo(@AuthenticationPrincipal principal: OAuth2User, @RequestParam id: Long, model: Model): String {
+        val vehicles = vehiclesOf(principal)
+        service.undo(id, vehicles.mapNotNull { it.id }.toSet())
+        renderPanel(model, vehicles, FuelDraft().withDefaults(vehicles), saved = null)
+        return "fragments/panel :: panel"
+    }
+
     private fun vehiclesOf(principal: OAuth2User): List<Vehicle> =
         vehicleService.listFor(currentUser.require(principal).id!!)
 

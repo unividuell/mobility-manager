@@ -9,6 +9,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
+import java.util.Optional
 
 /**
  * Unit test for [FuelService]. Plain JUnit 5 (grouped with [Nested] classes),
@@ -287,6 +288,52 @@ class FuelServiceTest {
             result.shouldBeInstanceOf<FuelService.DraftResult.Pending>()
             result.draft shouldBe full
             verify(exactly = 0) { repository.save(any()) }
+        }
+    }
+
+    @Nested
+    inner class UndoingAnEntry {
+
+        private fun entry(id: Long, vehicleId: Long) = FuelEntry(
+            id = id,
+            vehicleId = vehicleId,
+            date = LocalDate.of(2026, 1, 1),
+            liters = 42.5,
+            pricePerLiter = 1.749,
+            kilometers = 680.0,
+        )
+
+        @Test
+        fun `deletes the entry when it belongs to one of the caller's vehicles`() {
+            val repository = mockk<FuelEntryRepository>(relaxed = true)
+            val service = newService(repository)
+            every { repository.findById(7L) } returns Optional.of(entry(id = 7L, vehicleId = 3L))
+
+            service.undo(7L, ownedVehicleIds = setOf(3L, 4L))
+
+            verify(exactly = 1) { repository.deleteById(7L) }
+        }
+
+        @Test
+        fun `does not delete an entry that belongs to another user's vehicle`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            every { repository.findById(7L) } returns Optional.of(entry(id = 7L, vehicleId = 99L))
+
+            service.undo(7L, ownedVehicleIds = setOf(3L, 4L))
+
+            verify(exactly = 0) { repository.deleteById(any()) }
+        }
+
+        @Test
+        fun `does nothing when the entry no longer exists`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            every { repository.findById(7L) } returns Optional.empty()
+
+            service.undo(7L, ownedVehicleIds = setOf(3L))
+
+            verify(exactly = 0) { repository.deleteById(any()) }
         }
     }
 }
