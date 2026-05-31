@@ -50,10 +50,10 @@
             <span>Verbrauch L/100 km · alt → neu</span>
             <span th:if="${hasOutliers}" class="flex items-center gap-1 normal-case tracking-normal text-zinc-600">
                 <span class="bar outlier inline-block h-3 w-3 shrink-0 rounded-sm" style="opacity:.5"></span>
-                Ausreißer (nicht im Ø)
+                Ausreißer
             </span>
         </p>
-        <div class="shrink-0 overflow-x-auto pb-3">
+        <div id="chart-scroll" class="shrink-0 overflow-x-auto pb-3">
             <div class="flex h-28 items-end gap-1">
                 <div th:each="row : ${chartRows}"
                      class="bar w-5 shrink-0 cursor-pointer rounded-t"
@@ -104,6 +104,10 @@
 <script>
     (function () {
         const LONG_PRESS_MS = 500;
+
+        // bars run oldest → newest, so start scrolled fully right on the newest one
+        const chartScroll = document.getElementById('chart-scroll');
+        if (chartScroll) chartScroll.scrollLeft = chartScroll.scrollWidth;
 
         function clearSelection() {
             document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
