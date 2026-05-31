@@ -52,7 +52,10 @@ class FuelController(
 
         when (val result = service.applyValue(current, value)) {
             is FuelService.DraftResult.Completed ->
-                renderPanel(model, vehicles, FuelDraft(vehicleId = selectedId).withDefaults(), saved = result.saved)
+                renderPanel(
+                    model, vehicles, FuelDraft(vehicleId = selectedId).withDefaults(),
+                    saved = result.saved, delta = service.consumptionDelta(result.saved),
+                )
             is FuelService.DraftResult.Pending ->
                 renderPanel(model, vehicles, result.draft, saved = null)
         }
@@ -89,10 +92,18 @@ class FuelController(
         if (date == null) copy(date = LocalDate.now()) else this
 
     /** Shared model for the swappable panel: vehicles for the picker, the draft/entry, and display helpers. */
-    private fun renderPanel(model: Model, vehicles: List<Vehicle>, draft: FuelDraft, saved: FuelEntry?) {
+    private fun renderPanel(
+        model: Model,
+        vehicles: List<Vehicle>,
+        draft: FuelDraft,
+        saved: FuelEntry?,
+        delta: ConsumptionDelta? = null,
+    ) {
         model.addAttribute("vehicles", vehicles)
         model.addAttribute("draft", draft)
         model.addAttribute("saved", saved)
+        // consumption trend vs. the previous refueling (only meaningful on a saved entry)
+        model.addAttribute("consumptionDelta", delta)
         // the vehicle/date currently picked in the draft or linked to the saved entry, for display
         val pickedId = saved?.vehicleId ?: draft.vehicleId
         model.addAttribute("pickedVehicle", vehicles.firstOrNull { it.id == pickedId })

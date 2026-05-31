@@ -4,6 +4,7 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.comparables.shouldBeGreaterThan
 import io.kotest.matchers.doubles.plusOrMinus
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.BeforeEach
@@ -86,4 +87,44 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
         repository.deleteAll()
         repository.count() shouldBe 0
     }
+
+    @Test
+    fun `findPrevious returns the chronologically preceding entry for the vehicle`() {
+        val older = repository.save(entry(date = LocalDate.of(2026, 5, 1)))
+        val newer = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
+
+        repository.findPrevious(vehicleId, newer.date, newer.id!!)?.id shouldBe older.id
+    }
+
+    @Test
+    fun `findPrevious returns null for the first entry`() {
+        val first = repository.save(entry(date = LocalDate.of(2026, 5, 1)))
+
+        repository.findPrevious(vehicleId, first.date, first.id!!).shouldBeNull()
+    }
+
+    @Test
+    fun `findPrevious breaks a same-date tie by id`() {
+        val a = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
+        val b = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
+
+        repository.findPrevious(vehicleId, b.date, b.id!!)?.id shouldBe a.id
+    }
+
+    @Test
+    fun `findPrevious ignores entries of other vehicles`() {
+        val otherVehicle = vehicles.save(Vehicle(name = "Roadster", color = "#f43f5e")).id!!
+        repository.save(entry(vehicleId = otherVehicle, date = LocalDate.of(2026, 5, 10)))
+        val mine = repository.save(entry(date = LocalDate.of(2026, 5, 20)))
+
+        repository.findPrevious(vehicleId, mine.date, mine.id!!).shouldBeNull()
+    }
+
+    private fun entry(vehicleId: Long = this.vehicleId, date: LocalDate) = FuelEntry(
+        vehicleId = vehicleId,
+        date = date,
+        liters = 40.0,
+        pricePerLiter = 1.7,
+        kilometers = 500.0,
+    )
 }

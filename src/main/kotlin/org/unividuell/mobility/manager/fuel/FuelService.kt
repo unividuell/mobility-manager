@@ -53,6 +53,18 @@ class FuelService(
     }
 
     /**
+     * How [entry]'s consumption compares to the previous refueling of the same
+     * vehicle, or null when it is the first one (nothing to compare against).
+     */
+    fun consumptionDelta(entry: FuelEntry): ConsumptionDelta? {
+        val previous = repository.findPrevious(entry.vehicleId, entry.date, entry.id!!) ?: return null
+        return ConsumptionDelta(
+            previousPer100Km = previous.consumptionPer100Km,
+            diff = entry.consumptionPer100Km - previous.consumptionPer100Km,
+        )
+    }
+
+    /**
      * Undoes a just-saved entry. Deletes it only when it belongs to one of the
      * caller's vehicles, so a guessed id can't remove another user's entry.
      */

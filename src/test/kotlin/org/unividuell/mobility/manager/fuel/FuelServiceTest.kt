@@ -1,5 +1,7 @@
 package org.unividuell.mobility.manager.fuel
 
+import io.kotest.matchers.doubles.plusOrMinus
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.confirmVerified
@@ -291,6 +293,59 @@ class FuelServiceTest {
             service.undo(7L, ownedVehicleIds = setOf(3L))
 
             verify(exactly = 0) { repository.deleteById(any()) }
+        }
+    }
+
+    @Nested
+    inner class ConsumptionComparison {
+
+        // consumption = liters / kilometers * 100
+        private fun entry(id: Long, liters: Double, kilometers: Double) = FuelEntry(
+            id = id,
+            vehicleId = 3L,
+            date = LocalDate.of(2026, 1, 1),
+            liters = liters,
+            pricePerLiter = 1.7,
+            kilometers = kilometers,
+        )
+
+        @Test
+        fun `is null when there is no previous entry`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            val current = entry(id = 2L, liters = 45.0, kilometers = 600.0)
+            every { repository.findPrevious(3L, current.date, 2L) } returns null
+
+            service.consumptionDelta(current).shouldBeNull()
+        }
+
+        @Test
+        fun `reports a signed rise against the previous entry`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            val current = entry(id = 2L, liters = 45.0, kilometers = 600.0)  // 7.5
+            val previous = entry(id = 1L, liters = 40.0, kilometers = 800.0) // 5.0
+            every { repository.findPrevious(3L, current.date, 2L) } returns previous
+
+            val delta = service.consumptionDelta(current)!!
+            delta.previousPer100Km shouldBe (5.0 plusOrMinus 1e-9)
+            delta.diff shouldBe (2.5 plusOrMinus 1e-9)
+            delta.increased shouldBe true
+            delta.sign shouldBe "+"
+        }
+
+        @Test
+        fun `reports a signed drop against the previous entry`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            val current = entry(id = 2L, liters = 40.0, kilometers = 800.0)  // 5.0
+            val previous = entry(id = 1L, liters = 45.0, kilometers = 600.0) // 7.5
+            every { repository.findPrevious(3L, current.date, 2L) } returns previous
+
+            val delta = service.consumptionDelta(current)!!
+            delta.diff shouldBe ((-2.5) plusOrMinus 1e-9)
+            delta.decreased shouldBe true
+            delta.sign shouldBe "−"
         }
     }
 }

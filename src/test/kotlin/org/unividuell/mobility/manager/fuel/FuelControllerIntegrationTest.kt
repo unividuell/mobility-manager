@@ -226,6 +226,28 @@ class FuelControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `result screen shows the consumption trend versus the previous refueling`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
+        // first refueling: 40 L / 800 km = 5.0 L/100km — nothing to compare against
+        postValue(value = "40")
+        postValue(value = "800", liters = "40")
+        val first = postValue(value = "1.70", liters = "40", kilometers = "800.0")
+        first shouldContain """data-testid="result-panel""""
+        first shouldNotContain "consumption-delta"
+
+        // second refueling: 45 L / 600 km = 7.5 → +2.50 L/100km (a rise)
+        postValue(value = "45")
+        postValue(value = "600", liters = "45")
+        val second = postValue(value = "1.80", liters = "45", kilometers = "600.0")
+
+        second shouldContain """data-testid="consumption-delta""""
+        second shouldContain "▲"
+        second shouldContain "+2.50 L/100 km"
+        second shouldContain "text-rose-400" // a rise is shown in red
+    }
+
+    @Test
     fun `reset endpoint returns an empty draft`() {
         vehicleService.create(userId, "Kombi", "#06b6d4")
 
