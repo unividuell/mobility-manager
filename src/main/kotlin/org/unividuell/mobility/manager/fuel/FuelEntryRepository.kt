@@ -12,4 +12,7 @@ interface FuelEntryRepository :
 
     /** Every refueling of the given vehicles in one shot, for computing per-vehicle stats. */
     fun findAllByVehicleIdIn(vehicleIds: Collection<Long>): List<FuelEntry>
+
+    /** Removes all refuelings of a vehicle — used when the vehicle itself is deleted. */
+    fun deleteAllByVehicleId(vehicleId: Long)
 }

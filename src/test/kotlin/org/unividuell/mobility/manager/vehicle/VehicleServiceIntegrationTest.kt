@@ -12,9 +12,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.server.ResponseStatusException
+import org.unividuell.mobility.manager.fuel.FuelEntry
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
 import org.unividuell.mobility.manager.user.AppUserRepository
 import org.unividuell.mobility.manager.user.AppUserService
+import java.time.LocalDate
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -96,5 +98,19 @@ class VehicleServiceIntegrationTest @Autowired constructor(
 
         repository.count() shouldBe 0
         service.listFor(userA).shouldBeEmpty()
+    }
+
+    @Test
+    fun `delete also removes the vehicle's refuelings instead of failing the foreign key`() {
+        val created = service.create(userA, "Gone", "#06b6d4")
+        fuelEntries.save(
+            FuelEntry(vehicleId = created.id!!, date = LocalDate.of(2026, 5, 20), liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0),
+        )
+        fuelEntries.count() shouldBe 1
+
+        service.delete(created.id!!, userA)
+
+        repository.count() shouldBe 0
+        fuelEntries.count() shouldBe 0
     }
 }
