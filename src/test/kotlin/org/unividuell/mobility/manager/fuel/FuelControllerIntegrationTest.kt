@@ -3,6 +3,8 @@ package org.unividuell.mobility.manager.fuel
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
+import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -10,7 +12,9 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockHttpServletRequestDsl
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
@@ -35,35 +39,48 @@ class FuelControllerIntegrationTest @Autowired constructor(
     private val githubId = 4711L
     private var userId = 0L
 
+    // Spring Session (JDBC) is cookie-based, so to keep the selected-vehicle context
+    // across a test's requests we thread the SESSION cookie like a real browser would.
+    private var sessionCookie: Cookie? = null
+
     @BeforeEach
     fun setUp() {
         repository.deleteAll()
         vehicles.deleteAll()
         userRepository.deleteAll()
         userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
+        sessionCookie = null
     }
 
     private fun login(): RequestPostProcessor = oauth2Login().attributes { it["id"] = githubId }
 
     @Test
-    fun `GET root renders empty draft panel with five slots, date prefilled to today`() {
-        val body = mockMvc.get("/") { with(login()) }.andReturn().response.contentAsString
+    fun `GET root renders a four-slot draft with the date prefilled and no vehicle quick-entry`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4") // sole vehicle → auto-selected as context
 
-        // five slot tiles (liter, €/liter, km, vehicle, date) + the input form
-        body.occurrencesOf("""data-testid="slot"""") shouldBe 5
-        // four are empty; the date slot is prefilled with today
-        body.occurrencesOf(">—<") shouldBe 4
+        val body = getRoot()
+
+        // four slot tiles (liter, €/liter, km, date) — the vehicle slot is gone
+        body.occurrencesOf("""data-testid="slot"""") shouldBe 4
+        // three are empty; the date slot is prefilled with today
+        body.occurrencesOf(">—<") shouldBe 3
         body shouldContain """data-testid="draft-panel""""
+        body shouldContain """data-testid="value-input""""
         body shouldContain """name="date" value="${LocalDate.now()}""""
         body shouldContainAll listOf(
             """name="liters" value=""""",
             """name="pricePerLiter" value=""""",
             """name="kilometers" value=""""",
         )
+        // the vehicle quick-entry and its datalist are removed
+        body shouldNotContain "vehicle-options"
+        body shouldNotContain """name="vehicleId""""
     }
 
     @Test
     fun `value below 5 is classified as PRICE_PER_LITER`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
         val body = postValue(value = "1.859")
 
         body shouldContain """name="pricePerLiter" value="1.859""""
@@ -73,6 +90,8 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `value between 5 and 150 is classified as LITERS`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
         val body = postValue(value = "45.32")
 
         body shouldContain """name="liters" value="45.32""""
@@ -81,6 +100,8 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `value of 150 or more is classified as KILOMETERS`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
         val body = postValue(value = "520")
 
         body shouldContain """name="kilometers" value="520.0""""
@@ -88,35 +109,63 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `german comma decimal is accepted and normalised to dot`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
         val body = postValue(value = "1,859")
 
         body shouldContain """name="pricePerLiter" value="1.859""""
     }
 
     @Test
-    fun `the only vehicle is preselected, so three numbers complete the entry`() {
-        val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
+    fun `classification falls back when primary slot already filled`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
 
-        // the sole vehicle is already picked on a fresh panel
-        val panel = mockMvc.get("/") { with(login()) }.andReturn().response.contentAsString
-        panel shouldContain """name="vehicleId" value="$vehicleId""""
-        panel shouldContain "Kombi"
+        val body = postValue(value = "30", liters = "45")
+
+        body shouldContain """name="pricePerLiter" value="30.0""""
+        body shouldContain """name="liters" value="45.0""""
+    }
+
+    @Test
+    fun `invalid (non-numeric, non-date) value leaves the draft unchanged`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
+        val body = postValue(value = "abc", liters = "42.5")
+
+        body shouldContain """name="liters" value="42.5""""
+        body shouldContain """name="pricePerLiter" value="""""
+        repository.count() shouldBe 0
+    }
+
+    @Test
+    fun `negative or zero value is rejected without altering the draft`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
+        val body = postValue(value = "-1", liters = "42.5")
+
+        body shouldContain """name="liters" value="42.5""""
+        body shouldContain """name="pricePerLiter" value="""""
+    }
+
+    @Test
+    fun `the sole vehicle is the auto-selected context, so three numbers complete the entry`() {
+        val vehicleId = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
 
         postValue(value = "42.5")
         postValue(value = "680", liters = "42.5")
         withClue("no save yet — only two numbers") { repository.count() shouldBe 0 }
 
-        // third number completes it; no vehicle entry needed
+        // the third number completes it; the vehicle comes from the context
         val body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
 
         body shouldContain """data-testid="result-panel""""
-        body shouldContain "6.25"     // 42.5 / 680 * 100
+        body shouldContain "6.25" // 42.5 / 680 * 100
         body shouldContain "Kombi"
 
         repository.count() shouldBe 1
         val saved = repository.findAll().single()
         saved.vehicleId shouldBe vehicleId
-        saved.date shouldBe LocalDate.now()   // date defaulted to today
+        saved.date shouldBe LocalDate.now() // date defaulted to today
     }
 
     @Test
@@ -128,7 +177,6 @@ class FuelControllerIntegrationTest @Autowired constructor(
         body shouldContain """name="date" value="2026-05-20""""
         body shouldContain "20.05.2026"
 
-        // then the three numbers; the sole vehicle is preselected → completes
         postValue(value = "42.5", date = "2026-05-20")
         postValue(value = "680", liters = "42.5", date = "2026-05-20")
         body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0", date = "2026-05-20")
@@ -141,58 +189,47 @@ class FuelControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `with several vehicles none is preselected and the substring-typed one is linked`() {
+    fun `with several vehicles and none selected the entry is blocked`() {
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+        vehicleService.create(userId, "Roadster", "#f43f5e")
+
+        // nothing auto-selected → prompt to pick, no input field
+        val panel = getRoot()
+        panel shouldContain """data-testid="select-vehicle-hint""""
+        panel shouldNotContain """data-testid="value-input""""
+
+        // even posting all three numbers can't complete without a chosen vehicle
+        postValue(value = "42.5")
+        postValue(value = "680", liters = "42.5")
+        postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
+        repository.count() shouldBe 0
+    }
+
+    @Test
+    fun `selecting a vehicle sets the context, shows it in the header, and is used for the entry`() {
         val kombi = vehicleService.create(userId, "Kombi", "#06b6d4").id!!
         vehicleService.create(userId, "Roadster", "#f43f5e")
 
-        // multiple vehicles → nothing preselected
-        val panel = mockMvc.get("/") { with(login()) }.andReturn().response.contentAsString
-        panel shouldContain """name="vehicleId" value="""""
+        selectVehicle(kombi)
+
+        val home = getRoot()
+        home shouldContain """data-testid="vehicle-context""""
+        home shouldContain "Kombi"
+        home shouldContain """data-testid="value-input""""
 
         postValue(value = "42.5")
         postValue(value = "680", liters = "42.5")
-        // three numbers but no vehicle yet → still a draft, not saved
-        var body = postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
-        body shouldContain """data-testid="draft-panel""""
-        repository.count() shouldBe 0
+        postValue(value = "1.749", liters = "42.5", kilometers = "680.0")
 
-        // a substring resolves the right vehicle and completes the entry
-        body = postValue(value = "omb", liters = "42.5", pricePerLiter = "1.749", kilometers = "680.0")
-
-        body shouldContain """data-testid="result-panel""""
-        body shouldContain "Kombi"
         repository.count() shouldBe 1
         repository.findAll().single().vehicleId shouldBe kombi
     }
 
     @Test
-    fun `classification falls back when primary slot already filled`() {
-        val body = postValue(value = "30", liters = "45")
-
-        body shouldContain """name="pricePerLiter" value="30.0""""
-        body shouldContain """name="liters" value="45.0""""
-    }
-
-    @Test
-    fun `invalid (non-numeric, non-matching) value leaves the draft unchanged`() {
-        val body = postValue(value = "abc", liters = "42.5")
-
-        body shouldContain """name="liters" value="42.5""""
-        body shouldContain """name="pricePerLiter" value="""""
-        repository.count() shouldBe 0
-    }
-
-    @Test
-    fun `negative or zero value is rejected without altering the draft`() {
-        val body = postValue(value = "-1", liters = "42.5")
-
-        body shouldContain """name="liters" value="42.5""""
-        body shouldContain """name="pricePerLiter" value="""""
-    }
-
-    @Test
     fun `reset endpoint returns an empty draft`() {
-        val body = mockMvc.post("/fuel/reset") { with(login()) }.andReturn().response.contentAsString
+        vehicleService.create(userId, "Kombi", "#06b6d4")
+
+        val body = capture(mockMvc.post("/fuel/reset") { common() }.andReturn())
 
         body shouldContainAll listOf(
             """name="liters" value=""""",
@@ -211,11 +248,6 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
         repository.count() shouldBe 0
         body shouldContain """data-testid="draft-panel""""
-        body shouldContainAll listOf(
-            """name="liters" value=""""",
-            """name="pricePerLiter" value=""""",
-            """name="kilometers" value=""""",
-        )
     }
 
     @Test
@@ -224,7 +256,6 @@ class FuelControllerIntegrationTest @Autowired constructor(
         val foreignVehicleId = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
         val foreign = repository.save(entry(foreignVehicleId))
 
-        // octocat (the logged-in user) tries to undo the stranger's entry
         postUndo(id = foreign.id!!)
 
         withClue("the foreign entry must survive") { repository.count() shouldBe 1 }
@@ -238,27 +269,47 @@ class FuelControllerIntegrationTest @Autowired constructor(
         kilometers = 680.0,
     )
 
-    private fun postUndo(id: Long): String = mockMvc.post("/fuel/undo") {
-        with(login())
-        param("id", id.toString())
-    }.andReturn().response.contentAsString
+    private fun getRoot(): String = capture(mockMvc.get("/") { common() }.andReturn())
+
+    private fun selectVehicle(id: Long) {
+        capture(mockMvc.post("/vehicles/$id/select") { common() }.andReturn())
+    }
 
     private fun postValue(
         value: String,
         liters: String = "",
         pricePerLiter: String = "",
         kilometers: String = "",
-        vehicleId: String = "",
         date: String = "",
-    ): String = mockMvc.post("/fuel/value") {
+    ): String = capture(
+        mockMvc.post("/fuel/value") {
+            common()
+            param("value", value)
+            param("liters", liters)
+            param("pricePerLiter", pricePerLiter)
+            param("kilometers", kilometers)
+            param("date", date)
+        }.andReturn(),
+    )
+
+    private fun postUndo(id: Long): String = capture(
+        mockMvc.post("/fuel/undo") {
+            common()
+            param("id", id.toString())
+        }.andReturn(),
+    )
+
+    // ---- request plumbing: auth + carrying the Spring Session cookie ----
+
+    private fun MockHttpServletRequestDsl.common() {
         with(login())
-        param("value", value)
-        param("liters", liters)
-        param("pricePerLiter", pricePerLiter)
-        param("kilometers", kilometers)
-        param("vehicleId", vehicleId)
-        param("date", date)
-    }.andReturn().response.contentAsString
+        sessionCookie?.let { cookie(it) }
+    }
+
+    private fun capture(result: MvcResult): String {
+        result.response.getCookie("SESSION")?.let { sessionCookie = it }
+        return result.response.contentAsString
+    }
 
     // ---- tiny local helpers built on top of kotest matchers ----
 

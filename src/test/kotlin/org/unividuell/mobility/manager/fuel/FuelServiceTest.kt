@@ -15,26 +15,23 @@ import java.util.Optional
  * Unit test for [FuelService]. Plain JUnit 5 (grouped with [Nested] classes),
  * kotest is used only for assertions. The classifier is a pure-logic value
  * object, so it's used as-is; the repository is mocked with mockk because it
- * carries the I/O side effect. The vehicle resolver is passed in as a lambda.
+ * carries the I/O side effect.
  */
 class FuelServiceTest {
 
     private fun newService(repository: FuelEntryRepository): FuelService =
         FuelService(FuelValueClassifier(), repository)
 
-    // most cases don't involve a vehicle: resolver matches nothing
-    private val noVehicle: (String) -> Long? = { null }
-
     @Nested
     inner class InvalidInput {
 
         @Test
-        fun `returns the unchanged draft for a non-numeric value that matches no vehicle`() {
+        fun `returns the unchanged draft for a non-numeric, non-date value`() {
             val repository = mockk<FuelEntryRepository>()
             val service = newService(repository)
             val draft = FuelDraft(liters = 42.5)
 
-            val result = service.applyValue(draft, "abc", noVehicle)
+            val result = service.applyValue(draft, "abc")
 
             result shouldBe FuelService.DraftResult.Pending(draft)
             verify(exactly = 0) { repository.save(any()) }
@@ -45,7 +42,7 @@ class FuelServiceTest {
         fun `returns the unchanged draft for zero`() {
             val service = newService(mockk())
 
-            val result = service.applyValue(FuelDraft(), "0", noVehicle)
+            val result = service.applyValue(FuelDraft(), "0")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft())
         }
@@ -54,7 +51,7 @@ class FuelServiceTest {
         fun `returns the unchanged draft for a negative value`() {
             val service = newService(mockk())
 
-            val result = service.applyValue(FuelDraft(), "-1.5", noVehicle)
+            val result = service.applyValue(FuelDraft(), "-1.5")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft())
         }
@@ -63,7 +60,7 @@ class FuelServiceTest {
         fun `returns the unchanged draft for blank input`() {
             val service = newService(mockk())
 
-            val result = service.applyValue(FuelDraft(), "   ", noVehicle)
+            val result = service.applyValue(FuelDraft(), "   ")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft())
         }
@@ -76,7 +73,7 @@ class FuelServiceTest {
         fun `routes a value below 5 to PRICE_PER_LITER`() {
             val service = newService(mockk(relaxed = true))
 
-            val result = service.applyValue(FuelDraft(), "1.859", noVehicle)
+            val result = service.applyValue(FuelDraft(), "1.859")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft(pricePerLiter = 1.859))
         }
@@ -85,7 +82,7 @@ class FuelServiceTest {
         fun `routes a value between 5 and 150 to LITERS`() {
             val service = newService(mockk(relaxed = true))
 
-            val result = service.applyValue(FuelDraft(), "45.32", noVehicle)
+            val result = service.applyValue(FuelDraft(), "45.32")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft(liters = 45.32))
         }
@@ -94,7 +91,7 @@ class FuelServiceTest {
         fun `routes a value of 150 or more to KILOMETERS`() {
             val service = newService(mockk(relaxed = true))
 
-            val result = service.applyValue(FuelDraft(), "520", noVehicle)
+            val result = service.applyValue(FuelDraft(), "520")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft(kilometers = 520.0))
         }
@@ -107,7 +104,7 @@ class FuelServiceTest {
         fun `accepts a german comma decimal separator`() {
             val service = newService(mockk(relaxed = true))
 
-            val result = service.applyValue(FuelDraft(), "1,859", noVehicle)
+            val result = service.applyValue(FuelDraft(), "1,859")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft(pricePerLiter = 1.859))
         }
@@ -116,7 +113,7 @@ class FuelServiceTest {
         fun `trims surrounding whitespace`() {
             val service = newService(mockk(relaxed = true))
 
-            val result = service.applyValue(FuelDraft(), "  45,5  ", noVehicle)
+            val result = service.applyValue(FuelDraft(), "  45,5  ")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft(liters = 45.5))
         }
@@ -132,51 +129,11 @@ class FuelServiceTest {
             // Primary classification for 30 would be LITERS (5 ≤ x < 150), but
             // liters is already filled. Among the remaining slots PRICE_PER_LITER
             // (typical 1.85) is closer than KILOMETERS (typical 500) in log-distance.
-            val result = service.applyValue(FuelDraft(liters = 45.0), "30", noVehicle)
+            val result = service.applyValue(FuelDraft(liters = 45.0), "30")
 
             result shouldBe FuelService.DraftResult.Pending(
                 FuelDraft(liters = 45.0, pricePerLiter = 30.0),
             )
-        }
-    }
-
-    @Nested
-    inner class VehicleMatching {
-
-        @Test
-        fun `matches a non-numeric value to a vehicle and fills the vehicle slot`() {
-            val service = newService(mockk(relaxed = true))
-
-            val result = service.applyValue(FuelDraft(), "Kombi") { 3L }
-
-            result shouldBe FuelService.DraftResult.Pending(FuelDraft(vehicleId = 3L))
-        }
-
-        @Test
-        fun `completes and persists when the vehicle is the last missing piece`() {
-            val repository = mockk<FuelEntryRepository>()
-            val service = newService(repository)
-            val date = LocalDate.of(2026, 1, 1)
-            val draft = FuelDraft(liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0, date = date)
-            val persisted = FuelEntry(
-                id = 9L,
-                vehicleId = 3L,
-                date = date,
-                liters = 42.5,
-                pricePerLiter = 1.749,
-                kilometers = 680.0,
-            )
-            every { repository.save(any()) } returns persisted
-
-            val result = service.applyValue(draft, "Kombi") { 3L }
-
-            result shouldBe FuelService.DraftResult.Completed(persisted)
-            verify(exactly = 1) {
-                repository.save(
-                    FuelEntry(vehicleId = 3L, date = date, liters = 42.5, pricePerLiter = 1.749, kilometers = 680.0),
-                )
-            }
-            confirmVerified(repository)
         }
     }
 
@@ -187,7 +144,7 @@ class FuelServiceTest {
         fun `matches an ISO date and fills the date slot`() {
             val service = newService(mockk(relaxed = true))
 
-            val result = service.applyValue(FuelDraft(), "2026-05-20", noVehicle)
+            val result = service.applyValue(FuelDraft(), "2026-05-20")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(2026, 5, 20)))
         }
@@ -196,7 +153,7 @@ class FuelServiceTest {
         fun `matches a german day-first date and fills the date slot`() {
             val service = newService(mockk(relaxed = true))
 
-            val result = service.applyValue(FuelDraft(), "20.05.2026", noVehicle)
+            val result = service.applyValue(FuelDraft(), "20.05.2026")
 
             result shouldBe FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(2026, 5, 20)))
         }
@@ -206,9 +163,9 @@ class FuelServiceTest {
             val service = newService(mockk(relaxed = true))
 
             // run-year is 2026: 26 → 2026, 99 → 1999
-            service.applyValue(FuelDraft(), "20.5.26", noVehicle) shouldBe
+            service.applyValue(FuelDraft(), "20.5.26") shouldBe
                 FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(2026, 5, 20)))
-            service.applyValue(FuelDraft(), "20.5.99", noVehicle) shouldBe
+            service.applyValue(FuelDraft(), "20.5.99") shouldBe
                 FuelService.DraftResult.Pending(FuelDraft(date = LocalDate.of(1999, 5, 20)))
         }
 
@@ -227,7 +184,7 @@ class FuelServiceTest {
             )
             every { repository.save(any()) } returns persisted
 
-            val result = service.applyValue(draft, "20.05.2026", noVehicle)
+            val result = service.applyValue(draft, "20.05.2026")
 
             result shouldBe FuelService.DraftResult.Completed(persisted)
             verify(exactly = 1) {
@@ -264,7 +221,7 @@ class FuelServiceTest {
             )
             every { repository.save(any()) } returns persisted
 
-            val result = service.applyValue(draft, "680", noVehicle)
+            val result = service.applyValue(draft, "680")
 
             result shouldBe FuelService.DraftResult.Completed(persisted)
             verify(exactly = 1) {
@@ -282,7 +239,7 @@ class FuelServiceTest {
             // All three numeric slots are filled and no vehicle matches "99".
             val full = FuelDraft(liters = 45.0, pricePerLiter = 1.8, kilometers = 500.0)
 
-            val result = service.applyValue(full, "99", noVehicle)
+            val result = service.applyValue(full, "99")
 
             // Not complete (no vehicle) and the stray value finds no home.
             result.shouldBeInstanceOf<FuelService.DraftResult.Pending>()

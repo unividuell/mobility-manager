@@ -1,5 +1,6 @@
 package org.unividuell.mobility.manager.vehicle
 
+import jakarta.servlet.http.HttpSession
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
@@ -17,6 +18,7 @@ import org.unividuell.mobility.manager.user.CurrentUser
 @RequestMapping("/vehicles")
 class VehicleController(
     private val service: VehicleService,
+    private val vehicleContext: VehicleContext,
     private val currentUser: CurrentUser,
 ) {
 
@@ -41,6 +43,18 @@ class VehicleController(
     ): String {
         val userId = currentUser.require(principal).id!!
         service.create(userId, name, color)
+        return "redirect:/vehicles"
+    }
+
+    @PostMapping("/{id}/select")
+    fun select(
+        @AuthenticationPrincipal principal: OAuth2User,
+        @PathVariable id: Long,
+        session: HttpSession,
+    ): String {
+        val userId = currentUser.require(principal).id!!
+        service.get(id, userId) // 404s unless the vehicle belongs to the user
+        vehicleContext.select(session, id)
         return "redirect:/vehicles"
     }
 

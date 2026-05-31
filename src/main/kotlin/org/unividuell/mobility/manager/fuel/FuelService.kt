@@ -28,27 +28,20 @@ class FuelService(
     }
 
     /**
-     * Applies one raw input to the draft. The single input field carries five
+     * Applies one raw input to the draft. The single input field carries two
      * possible targets: a positive number lands in one of the three numeric
-     * slots (via [FuelValueClassifier]); a recognised date fills the date slot;
-     * anything else (or a number once all numeric slots are full) is matched
-     * against the user's vehicles through [resolveVehicle], which returns the
-     * vehicle id for a substring match. Completion is checked at the end, so the
-     * parts may arrive in any order.
+     * slots (via [FuelValueClassifier]); a recognised date fills the date slot.
+     * The vehicle is no longer typed here — it comes from the globally selected
+     * vehicle context and is seeded onto the draft by the controller. Completion
+     * is checked at the end, so the parts may arrive in any order.
      */
-    fun applyValue(
-        draft: FuelDraft,
-        rawValue: String,
-        resolveVehicle: (String) -> Long?,
-    ): DraftResult {
+    fun applyValue(draft: FuelDraft, rawValue: String): DraftResult {
         val trimmed = rawValue.trim()
         val updated = run {
             parseValue(rawValue)?.let { parsed ->
                 classifier.classify(parsed, draft.filledFields)?.let { return@run draft.with(it, parsed) }
             }
             parseDate(trimmed)?.let { return@run draft.copy(date = it) }
-            // not a usable number/date (or no numeric slot left) → try the vehicle
-            resolveVehicle(trimmed)?.let { return@run draft.copy(vehicleId = it) }
             draft
         }
 

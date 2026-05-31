@@ -78,4 +78,36 @@ class VehicleControllerIntegrationTest @Autowired constructor(
 
         vehicles.count() shouldBe 0
     }
+
+    @Test
+    fun `select sets the active vehicle context, marked in the overview`() {
+        val kombi = service.create(userId, "Kombi", "#06b6d4").id!!
+        service.create(userId, "Roadster", "#f43f5e")
+
+        // Spring Session is cookie-based; carry the SESSION cookie to the next request.
+        val select = mockMvc.post("/vehicles/$kombi/select") { with(login()) }
+            .andExpect { status { is3xxRedirection() } }
+            .andReturn()
+        val sessionCookie = select.response.getCookie("SESSION")!!
+
+        val body = mockMvc.get("/vehicles") {
+            with(login())
+            cookie(sessionCookie)
+        }.andReturn().response.contentAsString
+
+        // exactly one card is the active context; the other still offers "Wählen"
+        body.occurrencesOf("""data-testid="active-vehicle"""") shouldBe 1
+        body.occurrencesOf("""data-testid="select-vehicle"""") shouldBe 1
+    }
+
+    @Test
+    fun `select rejects a vehicle the user does not manage`() {
+        val otherUserId = users.upsert(githubId = 2222L, login = "stranger", displayName = "Stranger").id!!
+        val foreign = service.create(otherUserId, "Fremder", "#f43f5e").id!!
+
+        mockMvc.post("/vehicles/$foreign/select") { with(login()) }
+            .andExpect { status { isNotFound() } }
+    }
+
+    private fun String.occurrencesOf(needle: String): Int = split(needle).size - 1
 }

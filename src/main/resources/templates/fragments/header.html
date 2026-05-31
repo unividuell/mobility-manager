@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+
+<!--
+  Shared app header. Shows the globally selected vehicle (the active context) as a
+  link to the vehicle overview, plus the user and logout. `home=true` adds a link
+  back to the fuel screen for sub-pages.
+-->
+<header th:fragment="header(home)"
+        class="mb-4 flex items-center justify-between gap-3 text-sm text-zinc-400">
+    <a href="/vehicles"
+       class="-ml-2 flex items-center gap-2 rounded-lg px-2 py-1 transition hover:text-zinc-200
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600">
+        <span th:if="${selectedVehicle != null}" class="h-3 w-3 rounded-full ring-1 ring-white/10"
+              th:style="'background-color:' + ${selectedVehicle.color}"></span>
+        <span data-testid="vehicle-context" class="font-medium text-zinc-200"
+              th:classappend="${selectedVehicle == null} ? 'text-zinc-400'"
+              th:text="${selectedVehicle != null} ? ${selectedVehicle.name} : 'Fahrzeug wählen'">Fahrzeug</span>
+        <span class="text-zinc-600" aria-hidden="true">›</span>
+    </a>
+    <div class="flex items-center gap-3">
+        <a th:if="${home}" href="/" class="text-zinc-500 transition hover:text-zinc-200">Tanken</a>
+        <span class="text-zinc-500" sec:authentication="principal.attributes['displayName']">Fahrer</span>
+        <form action="/logout" method="post">
+            <button type="submit"
+                    class="rounded-lg px-2 py-1 text-zinc-500 transition hover:text-zinc-200
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600">
+                Abmelden
+            </button>
+        </form>
+    </div>
+</header>
+
+</body>
+</html>
