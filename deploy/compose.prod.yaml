@@ -1,0 +1,27 @@
+name: mobility-manager
+
+services:
+  mobility-manager:
+    image: ghcr.io/unividuell/mobility-manager:latest
+    container_name: mobility-manager
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      MOBILITY_MANAGER_GITHUB_CLIENT_SECRET: ${MOBILITY_MANAGER_GITHUB_CLIENT_SECRET}
+      MOBILITY_MANAGER_GITHUB_CLIENT_ID: ${MOBILITY_MANAGER_GITHUB_CLIENT_ID:-}
+    volumes:
+      # SQLite DB lands at ./data/mobility-manager.db on the host.
+      # The dir must be owned by the buildpack run user: chown 1002:1000 ./data
+      - ./data:/data
+    networks:
+      - edge
+    healthcheck:
+      test: ['CMD', 'bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf ''GET /actuator/health HTTP/1.0\r\n\r\n'' >&3 && grep -q UP <&3']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+networks:
+  edge:
+    external: true
