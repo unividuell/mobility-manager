@@ -113,4 +113,21 @@ class VehicleServiceIntegrationTest @Autowired constructor(
         repository.count() shouldBe 0
         fuelEntries.count() shouldBe 0
     }
+
+    @Test
+    fun `update stores the baseline reading, both fields or none`() {
+        val created = service.create(userA, "Moped", "#06b6d4", hasTripMeter = true)
+
+        service.update(
+            created.id!!, userA, name = "Moped", color = "#06b6d4", hasTripMeter = true,
+            baselineKm = 19123.0, baselineOn = LocalDate.of(2026, 7, 11),
+        )
+        service.get(created.id!!, userA).baselineKm shouldBe 19123.0
+        service.get(created.id!!, userA).baselineOn shouldBe LocalDate.of(2026, 7, 11)
+
+        // one half missing -> both cleared (an anchor needs value AND date)
+        service.update(created.id!!, userA, "Moped", "#06b6d4", hasTripMeter = true, baselineKm = 20000.0, baselineOn = null)
+        service.get(created.id!!, userA).baselineKm shouldBe null
+        service.get(created.id!!, userA).baselineOn shouldBe null
+    }
 }

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
+import java.time.LocalDate
 
 @Service
 class VehicleService(
@@ -33,11 +34,27 @@ class VehicleService(
         return vehicle
     }
 
-    fun update(id: Long, userId: Long, name: String, color: String, hasTripMeter: Boolean): Vehicle {
+    fun update(
+        id: Long,
+        userId: Long,
+        name: String,
+        color: String,
+        hasTripMeter: Boolean,
+        baselineKm: Double? = null,
+        baselineOn: LocalDate? = null,
+    ): Vehicle {
         // get(...) returns the full aggregate, so the managers set is preserved
         // through the copy/save round-trip.
         val vehicle = get(id, userId)
-        return repository.save(vehicle.copy(name = name.trim(), color = color, hasTripMeter = hasTripMeter))
+        // a baseline anchor only makes sense complete: a reading needs its date
+        val anchored = baselineKm != null && baselineOn != null
+        return repository.save(
+            vehicle.copy(
+                name = name.trim(), color = color, hasTripMeter = hasTripMeter,
+                baselineKm = if (anchored) baselineKm else null,
+                baselineOn = if (anchored) baselineOn else null,
+            ),
+        )
     }
 
     /**

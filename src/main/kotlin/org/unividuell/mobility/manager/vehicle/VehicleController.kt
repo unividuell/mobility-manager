@@ -1,6 +1,7 @@
 package org.unividuell.mobility.manager.vehicle
 
 import jakarta.servlet.http.HttpSession
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
 import org.unividuell.mobility.manager.fuel.FuelService
 import org.unividuell.mobility.manager.user.CurrentUser
+import java.time.LocalDate
 
 @Controller
 @RequestMapping("/vehicles")
@@ -71,6 +73,7 @@ class VehicleController(
     ): String {
         val userId = currentUser.require(principal).id!!
         model.addAttribute("vehicle", service.get(id, userId))
+        model.addAttribute("today", LocalDate.now())
         return "vehicles/form"
     }
 
@@ -81,9 +84,11 @@ class VehicleController(
         @RequestParam name: String,
         @RequestParam color: String,
         @RequestParam(defaultValue = "false") hasTripMeter: Boolean,
+        @RequestParam(required = false) baselineKm: Double?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) baselineOn: LocalDate?,
     ): String {
         val userId = currentUser.require(principal).id!!
-        service.update(id, userId, name, color, hasTripMeter)
+        service.update(id, userId, name, color, hasTripMeter, baselineKm, baselineOn)
         return "redirect:/vehicles"
     }
 

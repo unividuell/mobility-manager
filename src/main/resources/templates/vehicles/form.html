@@ -55,6 +55,35 @@
                    class="mt-1 h-6 w-6 shrink-0 cursor-pointer accent-[var(--accent,#06b6d4)]">
         </label>
 
+        <!-- Baseline: an odometer reading taken today (or any day) that anchors
+             the absolute km count for trip-meter vehicles. Both or none. -->
+        <fieldset th:if="${vehicle != null}" id="baseline-fields"
+                  class="flex flex-col gap-3 rounded-xl bg-zinc-900/60 p-4">
+            <legend class="px-1 text-sm text-zinc-400">Tacho-Ablesung (Basis für Gesamt-km)</legend>
+            <label class="flex flex-col gap-2">
+                <span class="text-xs text-zinc-500">Gesamt-km laut Tacho</span>
+                <input type="number" name="baselineKm" step="any" min="0" inputmode="decimal"
+                       th:value="${vehicle.baselineKm}"
+                       placeholder="z.B. 19123"
+                       class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3 text-lg
+                              text-zinc-100 caret-accent outline-none placeholder:text-zinc-600">
+            </label>
+            <label class="flex flex-col gap-2">
+                <span class="text-xs text-zinc-500">abgelesen am</span>
+                <input type="date" name="baselineOn"
+                       th:value="${vehicle.baselineOn != null ? vehicle.baselineOn : today}"
+                       class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3 text-lg
+                              text-zinc-100 caret-accent outline-none">
+            </label>
+        </fieldset>
+        <script th:if="${vehicle != null}">
+            // baseline only applies to trip-meter vehicles; hide it otherwise
+            const tripMeter = document.querySelector('input[name=hasTripMeter]');
+            const toggle = () => document.getElementById('baseline-fields').classList.toggle('hidden', !tripMeter.checked);
+            tripMeter.addEventListener('change', toggle);
+            toggle();
+        </script>
+
         <div class="mt-auto flex gap-3">
             <a href="/vehicles"
                class="flex-1 rounded-xl bg-zinc-800 px-4 py-4 text-center text-base font-semibold text-zinc-200
