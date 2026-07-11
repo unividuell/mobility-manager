@@ -21,6 +21,14 @@
               th:text="${selectedVehicle != null} ? ${selectedVehicle.name} : 'Fahrzeug wählen'">Fahrzeug</span>
         <span class="text-zinc-600" aria-hidden="true">›</span>
     </a>
+    <!-- overdue maintenance on the selected vehicle: red badge -> parts page -->
+    <a th:if="${selectedVehicle != null and overdueCount > 0}"
+       th:href="@{/vehicles/{id}/parts(id=${selectedVehicle.id})}"
+       data-testid="overdue-badge"
+       th:text="${overdueCount}"
+       aria-label="Überfällige Wartung" title="Überfällige Wartung"
+       class="-ml-1 mr-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500/90 px-1.5
+              text-xs font-bold tabular-nums text-white">1</a>
     <div class="flex items-center gap-3">
         <a th:if="${home}" href="/" class="text-zinc-500 transition hover:text-zinc-200">Tanken</a>
         <span class="text-zinc-500" sec:authentication="principal.attributes['displayName']">Fahrer</span>

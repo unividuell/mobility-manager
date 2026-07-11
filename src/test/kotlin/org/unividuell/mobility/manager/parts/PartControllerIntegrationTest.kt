@@ -123,6 +123,42 @@ class PartControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `header badge appears on any page once the selected vehicle has overdue items`() {
+        createClutch() // due at 19_223
+        fuelEntries.save(
+            org.unividuell.mobility.manager.fuel.FuelEntry(
+                vehicleId = vehicleId, date = LocalDate.of(2026, 8, 1),
+                liters = 5.0, pricePerLiter = 1.7, odometer = 19_300.0,
+            ),
+        )
+        // select the vehicle as the session context; carry the SESSION cookie on
+        val select = mockMvc.post("/vehicles/$vehicleId/select") { with(login()) }.andReturn()
+        val sessionCookie = select.response.getCookie("SESSION")!!
+
+        val body = mockMvc.get("/vehicles") {
+            with(login())
+            cookie(sessionCookie)
+        }.andReturn().response.contentAsString
+
+        body shouldContain """data-testid="overdue-badge""""
+        body shouldContain "/vehicles/$vehicleId/parts"
+    }
+
+    @Test
+    fun `header badge stays away without overdue items`() {
+        createClutch() // no fuel data -> unknown km -> no verdict, no badge
+        val select = mockMvc.post("/vehicles/$vehicleId/select") { with(login()) }.andReturn()
+        val sessionCookie = select.response.getCookie("SESSION")!!
+
+        val body = mockMvc.get("/vehicles") {
+            with(login())
+            cookie(sessionCookie)
+        }.andReturn().response.contentAsString
+
+        body shouldNotContain """data-testid="overdue-badge""""
+    }
+
+    @Test
     fun `create persists a part from the form and redirects to the list`() {
         mockMvc.post("/vehicles/$vehicleId/parts") {
             with(login())

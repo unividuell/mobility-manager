@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import org.unividuell.mobility.manager.fuel.FuelService
+import org.unividuell.mobility.manager.vehicle.Vehicle
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -103,6 +104,16 @@ class PartService(
     }
 
     fun tagSuggestions(userId: Long): List<Tag> = tags.findAllByUserIdOrderByName(userId)
+
+    /**
+     * How many checkpoints of the vehicle are overdue right now — feeds the
+     * header badge. No ownership check: callers pass an already-authorised vehicle.
+     */
+    fun overdueCount(vehicle: Vehicle): Int =
+        DueCalculator.openItems(
+            parts.findAllByVehicleId(vehicle.id!!),
+            fuelService.currentKm(vehicle),
+        ).count { it.overdue }
 
     fun overviewFor(userId: Long, vehicleId: Long): PartsOverview {
         val vehicle = vehicleService.get(vehicleId, userId)

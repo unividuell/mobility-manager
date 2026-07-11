@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ModelAttribute
+import org.unividuell.mobility.manager.parts.PartService
 import org.unividuell.mobility.manager.user.CurrentUser
 import org.unividuell.mobility.manager.vehicle.VehicleContext
 
@@ -18,6 +19,7 @@ import org.unividuell.mobility.manager.vehicle.VehicleContext
 class GlobalModelAdvice(
     private val currentUser: CurrentUser,
     private val vehicleContext: VehicleContext,
+    private val partService: PartService,
 ) {
 
     @ModelAttribute
@@ -31,5 +33,7 @@ class GlobalModelAdvice(
         }
         model.addAttribute("selectedVehicle", vehicle)
         model.addAttribute("accent", vehicle?.let { Accent.of(it.color) })
+        // parts with overdue maintenance mark the vehicle in the shared header
+        model.addAttribute("overdueCount", vehicle?.let { partService.overdueCount(it) } ?: 0)
     }
 }
