@@ -132,4 +132,62 @@ class PartServiceIntegrationTest @Autowired constructor(
         overview.dueItems[0].remainingKm shouldBe 23.0
         overview.tagNamesByPartId[overview.activeParts.single().id!!] shouldBe listOf("kupplung", "sachs")
     }
+
+    @Test
+    fun `checkOff records the typed values on exactly the addressed checkpoint`() {
+        val created = createClutch()
+        val target = created.checkpoints.first { it.label == "Kontrolle" }
+
+        service.checkOff(userA, mopedId, created.id!!, target.id!!, doneOn = LocalDate.of(2026, 7, 20), doneAtKm = 19_250.0)
+
+        val reloaded = parts.findById(created.id!!).orElseThrow()
+        val done = reloaded.checkpoints.first { it.label == "Kontrolle" }
+        done.doneOn shouldBe LocalDate.of(2026, 7, 20)
+        done.doneAtKm shouldBe 19_250.0
+        reloaded.checkpoints.first { it.label == "Beläge prüfen" }.open shouldBe true
+    }
+
+    @Test
+    fun `checkOff 404s for a checkpoint id that does not belong to the part`() {
+        val created = createClutch()
+
+        shouldThrow<ResponseStatusException> {
+            service.checkOff(userA, mopedId, created.id!!, checkpointId = 999_999L, doneOn = LocalDate.of(2026, 7, 20), doneAtKm = null)
+        }.statusCode shouldBe HttpStatus.NOT_FOUND
+    }
+
+    @Test
+    fun `replace retires the old part and links the successor atomically`() {
+        val old = createClutch()
+
+        val successor = service.replace(
+            userA, mopedId, old.id!!, name = "Kupplung LUK", details = null, priceEuro = 300,
+            installedAtKm = 25_000.0, installedOn = LocalDate.of(2027, 1, 15),
+            tagNames = listOf("kupplung"), checkpoints = listOf(PartService.CheckpointInput(100.0, "Kontrolle")),
+        )
+
+        val retired = parts.findById(old.id!!).orElseThrow()
+        retired.active shouldBe false
+        retired.retiredOn shouldBe LocalDate.of(2027, 1, 15)
+        retired.retiredAtKm shouldBe 25_000.0
+        retired.replacedByPartId shouldBe successor.id
+        parts.findById(successor.id!!).orElseThrow().active shouldBe true
+        // the retired part's open checkpoints no longer surface as due items
+        service.overviewFor(userA, mopedId).dueItems.map { it.part.id } shouldBe listOf(successor.id)
+    }
+
+    @Test
+    fun `delete removes the part and nulls successor references to it`() {
+        val old = createClutch()
+        val successor = service.replace(
+            userA, mopedId, old.id!!, name = "Kupplung LUK", details = null, priceEuro = null,
+            installedAtKm = 25_000.0, installedOn = LocalDate.of(2027, 1, 15),
+            tagNames = emptyList(), checkpoints = emptyList(),
+        )
+
+        service.delete(userA, mopedId, successor.id!!)
+
+        parts.findById(successor.id!!).isEmpty shouldBe true
+        parts.findById(old.id!!).orElseThrow().replacedByPartId shouldBe null
+    }
 }

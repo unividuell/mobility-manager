@@ -2,6 +2,7 @@ package org.unividuell.mobility.manager.parts
 
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import org.unividuell.mobility.manager.fuel.FuelService
 import org.unividuell.mobility.manager.vehicle.VehicleService
@@ -118,6 +119,64 @@ class PartService(
             },
             partNamesById = all.associate { it.id!! to it.name },
         )
+    }
+
+    /**
+     * Confirms an open checkpoint with the (possibly corrected) date and reading
+     * from the confirm step. 404s when the checkpoint doesn't belong to the part.
+     */
+    fun checkOff(userId: Long, vehicleId: Long, partId: Long, checkpointId: Long, doneOn: LocalDate, doneAtKm: Double?) {
+        val part = get(partId, vehicleId, userId)
+        val target = part.checkpoints.firstOrNull { it.id == checkpointId }
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        parts.save(
+            part.copy(
+                checkpoints = part.checkpoints
+                    .map { if (it.id == target.id) it.copy(doneOn = doneOn, doneAtKm = doneAtKm) else it }
+                    .toSet(),
+            ),
+        )
+    }
+
+    /**
+     * Replaces a part in one step: the successor is created and the old part is
+     * retired at the successor's install reading/date, linked via replacedByPartId.
+     * Atomic — a failure can't leave the successor in but the old part active.
+     */
+    @Transactional
+    fun replace(
+        userId: Long,
+        vehicleId: Long,
+        oldPartId: Long,
+        name: String,
+        details: String?,
+        priceEuro: Long?,
+        installedAtKm: Double,
+        installedOn: LocalDate,
+        tagNames: List<String>,
+        checkpoints: List<CheckpointInput>,
+    ): Part {
+        val old = get(oldPartId, vehicleId, userId)
+        val successor = create(userId, vehicleId, name, details, priceEuro, installedAtKm, installedOn, tagNames, checkpoints)
+        parts.save(old.copy(retiredOn = installedOn, retiredAtKm = installedAtKm, replacedByPartId = successor.id))
+        return successor
+    }
+
+    /**
+     * Deletes a part (typo correction). Checkpoints and tag joins cascade via the
+     * schema; successor references pointing at it are auto-nulled (ON DELETE SET NULL).
+     */
+    fun delete(userId: Long, vehicleId: Long, partId: Long) {
+        val part = get(partId, vehicleId, userId)
+        parts.deleteById(part.id!!)
+    }
+
+    /**
+     * Removes every part of a vehicle — used when the vehicle itself is deleted.
+     * Ownership is the caller's concern. Aggregate-aware (children cascade).
+     */
+    fun deleteAllFor(vehicleId: Long) {
+        parts.deleteAll(parts.findAllByVehicleId(vehicleId))
     }
 
     /** Splits a comma-separated tag input into normalised names: trimmed, lowercase, distinct. */

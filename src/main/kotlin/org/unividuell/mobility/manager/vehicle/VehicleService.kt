@@ -5,12 +5,14 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
+import org.unividuell.mobility.manager.parts.PartRepository
 import java.time.LocalDate
 
 @Service
 class VehicleService(
     private val repository: VehicleRepository,
     private val fuelEntries: FuelEntryRepository,
+    private val parts: PartRepository,
 ) {
 
     fun listFor(userId: Long): List<Vehicle> = repository.findAllManagedBy(userId)
@@ -58,14 +60,15 @@ class VehicleService(
     }
 
     /**
-     * Deletes the vehicle and everything hanging off it. Its refuelings reference
-     * the vehicle (FK), so they must go first or SQLite rejects the delete; the
-     * manager join rows are owned by the aggregate and cascade with it. Atomic, so
-     * a failure can't leave the vehicle gone but its entries orphaned.
+     * Deletes the vehicle and everything hanging off it. Parts and refuelings
+     * reference the vehicle (FK), so they go first; the parts' checkpoints/tag-joins
+     * cascade via the schema, the manager join rows cascade with the aggregate.
+     * Atomic, so a failure can't leave the vehicle gone but its children orphaned.
      */
     @Transactional
     fun delete(id: Long, userId: Long) {
         val vehicle = get(id, userId)
+        parts.deleteAll(parts.findAllByVehicleId(vehicle.id!!))
         fuelEntries.deleteAllByVehicleId(vehicle.id!!)
         repository.deleteById(vehicle.id!!)
     }
