@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.server.ResponseStatusException
 import org.unividuell.mobility.manager.fuel.FuelEntry
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
+import org.unividuell.mobility.manager.parts.*
 import org.unividuell.mobility.manager.user.AppUserRepository
 import org.unividuell.mobility.manager.user.AppUserService
 import java.time.LocalDate
@@ -24,6 +25,7 @@ class VehicleServiceIntegrationTest @Autowired constructor(
     private val service: VehicleService,
     private val repository: VehicleRepository,
     private val fuelEntries: FuelEntryRepository,
+    private val parts: PartRepository,
     private val users: AppUserService,
     private val userRepository: AppUserRepository,
 ) {
@@ -34,7 +36,8 @@ class VehicleServiceIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun cleanDb() {
-        // dependency order: fuel_entries -> vehicles (cascades vehicle_managers) -> users
+        // dependency order: parts -> fuel_entries -> vehicles (cascades vehicle_managers) -> users
+        parts.deleteAll()
         fuelEntries.deleteAll()
         repository.deleteAll()
         userRepository.deleteAll()
@@ -112,5 +115,38 @@ class VehicleServiceIntegrationTest @Autowired constructor(
 
         repository.count() shouldBe 0
         fuelEntries.count() shouldBe 0
+    }
+
+    @Test
+    fun `delete also removes the vehicle's parts with their checkpoints`() {
+        val created = service.create(userA, "Gone", "#06b6d4")
+        parts.save(
+            Part(
+                vehicleId = created.id!!, name = "Kupplung", details = null, priceCents = null,
+                installedAtKm = 100.0, installedOn = LocalDate.of(2026, 7, 11),
+                checkpoints = setOf(PartCheckpoint(offsetKm = 100.0, label = "Kontrolle")),
+            ),
+        )
+
+        service.delete(created.id!!, userA)
+
+        parts.count() shouldBe 0
+    }
+
+    @Test
+    fun `update stores the baseline reading, both fields or none`() {
+        val created = service.create(userA, "Moped", "#06b6d4", hasTripMeter = true)
+
+        service.update(
+            created.id!!, userA, name = "Moped", color = "#06b6d4", hasTripMeter = true,
+            baselineKm = 19123.0, baselineOn = LocalDate.of(2026, 7, 11),
+        )
+        service.get(created.id!!, userA).baselineKm shouldBe 19123.0
+        service.get(created.id!!, userA).baselineOn shouldBe LocalDate.of(2026, 7, 11)
+
+        // one half missing -> both cleared (an anchor needs value AND date)
+        service.update(created.id!!, userA, "Moped", "#06b6d4", hasTripMeter = true, baselineKm = 20000.0, baselineOn = null)
+        service.get(created.id!!, userA).baselineKm shouldBe null
+        service.get(created.id!!, userA).baselineOn shouldBe null
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.data.convert.ReadingConverter
 import org.springframework.data.convert.WritingConverter
 import org.springframework.data.jdbc.core.convert.JdbcCustomConversions
 import org.springframework.data.jdbc.core.dialect.JdbcHsqlDbDialect
+import org.springframework.data.relational.core.dialect.IdGeneration
 import org.springframework.data.relational.core.dialect.LockClause
 import org.springframework.data.relational.core.sql.LockOptions
 import java.time.LocalDate
@@ -19,9 +20,20 @@ class DatabaseConfig {
     // emits "... FOR UPDATE" lock clauses (used when deleting/updating an
     // aggregate that owns child rows, e.g. Vehicle → vehicle_managers), which
     // SQLite rejects. We neutralise the lock clause to an empty string.
+    //
+    // It also reports batch inserts as id-generation-capable (the HSQLDB
+    // default), which sqlite-jdbc can't actually honour: its getGeneratedKeys()
+    // is backed by a single `SELECT last_insert_rowid()`, so a JDBC batch of N
+    // child rows (e.g. a Part's checkpoints) comes back with exactly one
+    // generated key instead of N, leaving every row but one with a null id. We
+    // report batch id-generation as unsupported so Spring Data JDBC falls back
+    // to inserting — and reading the key of — one row at a time.
     @Bean
     fun jdbcDialect(): JdbcHsqlDbDialect = object : JdbcHsqlDbDialect() {
         override fun lock(): LockClause = NoLockClause
+        override fun getIdGeneration(): IdGeneration = object : IdGeneration by super.getIdGeneration() {
+            override fun supportedForBatchOperations(): Boolean = false
+        }
     }
 
     private object NoLockClause : LockClause {

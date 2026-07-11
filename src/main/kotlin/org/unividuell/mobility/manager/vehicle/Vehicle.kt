@@ -3,6 +3,7 @@ package org.unividuell.mobility.manager.vehicle
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.MappedCollection
 import org.springframework.data.relational.core.mapping.Table
+import java.time.LocalDate
 
 @Table("vehicles")
 data class Vehicle(
@@ -13,6 +14,10 @@ data class Vehicle(
     // is typed directly per refueling; if not, the user types the absolute odometer
     // reading and the distance is computed from the previous one.
     val hasTripMeter: Boolean = true,
+    // Baseline anchor for trip-meter vehicles: an odometer reading taken at any
+    // point in time. Current km = baselineKm + trips strictly after baselineOn.
+    val baselineKm: Double? = null,
+    val baselineOn: LocalDate? = null,
     // Owned join rows: which users may manage this vehicle (M:N to users).
     // Spring Data JDBC cascades inserts/deletes of these rows with the aggregate.
     @MappedCollection(idColumn = "vehicle_id")

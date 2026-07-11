@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full" xmlns:th="http://www.thymeleaf.org"
+      th:style="${accent != null} ? '--accent:' + ${accent.color} + ';--accent-fg:' + ${accent.onColor} : null">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#09090b">
+    <meta name="color-scheme" content="dark">
+    <title th:text="${part != null} ? 'Teil bearbeiten' : 'Neues Teil'">Teil</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <th:block th:replace="~{fragments/theme :: accent}"></th:block>
+</head>
+<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-accent/30">
+<main class="mx-auto flex min-h-full w-full max-w-md flex-col px-4
+             pt-[max(env(safe-area-inset-top),1rem)]
+             pb-[max(env(safe-area-inset-bottom),1rem)]">
+
+    <div th:replace="~{fragments/header :: header(home=true)}"></div>
+
+    <h1 class="mb-2 text-2xl font-extrabold tracking-tight"
+        th:text="${part != null} ? 'Teil bearbeiten' : 'Neues Teil'">Neues Teil</h1>
+
+    <!-- replace flow: the predecessor is retired when this form is saved -->
+    <p th:if="${predecessor != null}" class="mb-4 rounded-xl bg-zinc-900/60 px-4 py-3 text-sm text-zinc-400">
+        ersetzt <span class="font-medium text-zinc-200" th:text="${predecessor.name}">Kupplung alt</span>
+    </p>
+
+    <!-- new → POST /vehicles/{v}/parts ; edit → POST /vehicles/{v}/parts/{id} -->
+    <form th:action="${part != null}
+                     ? @{/vehicles/{v}/parts/{id}(v=${vehicle.id},id=${part.id})}
+                     : @{/vehicles/{v}/parts(v=${vehicle.id})}"
+          method="post" class="flex flex-col gap-5">
+
+        <input th:if="${predecessor != null}" type="hidden" name="replacesPartId" th:value="${predecessor.id}">
+
+        <label class="flex flex-col gap-2">
+            <span class="text-sm text-zinc-400">Name</span>
+            <input type="text" name="name" required autofocus autocomplete="off"
+                   th:value="${prefillName}"
+                   placeholder="z.B. Kupplung Sachs"
+                   class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3 text-lg
+                          text-zinc-100 caret-accent outline-none placeholder:text-zinc-600">
+        </label>
+
+        <label class="flex flex-col gap-2">
+            <span class="text-sm text-zinc-400">Tags (Komma-getrennt)</span>
+            <input type="text" name="tags" id="tags-input" autocomplete="off"
+                   th:value="${prefillTags}"
+                   placeholder="z.B. kupplung, sachs"
+                   class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3
+                          text-zinc-100 caret-accent outline-none placeholder:text-zinc-600">
+            <!-- the user's existing tags as one-tap suggestions -->
+            <div th:if="${!tagSuggestions.isEmpty()}" class="flex flex-wrap gap-1.5">
+                <button th:each="tag : ${tagSuggestions}" type="button"
+                        th:text="${tag.name}" th:data-tag="${tag.name}"
+                        class="tag-suggestion rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300
+                               transition hover:bg-zinc-700">kupplung</button>
+            </div>
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+            <label class="flex flex-col gap-2">
+                <span class="text-sm text-zinc-400">Einbau bei km</span>
+                <!-- whole km only; the stored/derived Double is rounded for display -->
+                <input type="number" name="installedAtKm" required step="1" min="0" inputmode="numeric"
+                       th:with="km=${part != null} ? ${part.installedAtKm} : ${currentKm}"
+                       th:value="${km != null} ? ${#numbers.formatDecimal(km, 1, 'NONE', 0, 'NONE')} : null"
+                       class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3 tabular-nums
+                              text-zinc-100 caret-accent outline-none">
+            </label>
+            <label class="flex flex-col gap-2">
+                <span class="text-sm text-zinc-400">Einbau am</span>
+                <input type="date" name="installedOn" required
+                       th:value="${part != null} ? ${part.installedOn} : ${today}"
+                       class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3
+                              text-zinc-100 caret-accent outline-none">
+            </label>
+        </div>
+
+        <label class="flex flex-col gap-2">
+            <span class="text-sm text-zinc-400">Preis (ganze Euro, optional)</span>
+            <input type="number" name="priceEuro" step="1" min="0" inputmode="numeric"
+                   th:value="${part?.priceEuro}"
+                   placeholder="z.B. 250"
+                   class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3 tabular-nums
+                          text-zinc-100 caret-accent outline-none placeholder:text-zinc-600">
+        </label>
+
+        <label class="flex flex-col gap-2">
+            <span class="text-sm text-zinc-400">Details</span>
+            <textarea name="details" rows="6"
+                      placeholder="Hersteller, Teilenummer, Bezugsquelle, Notizen …"
+                      class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3
+                             text-zinc-100 caret-accent outline-none placeholder:text-zinc-600"
+                      th:text="${part?.details}"></textarea>
+        </label>
+
+        <!-- checkpoint rows: parallel arrays checkpointOffsetKm[] / checkpointLabel[];
+             editing lists the OPEN checkpoints (done ones are kept server-side) -->
+        <fieldset class="flex flex-col gap-2">
+            <legend class="mb-1 text-sm text-zinc-400">Wartungspunkte (nach X km)</legend>
+            <div id="checkpoint-rows" class="flex flex-col gap-2">
+                <th:block th:if="${part != null}">
+                    <div th:each="cp : ${part.checkpoints}" th:if="${cp.open}" class="flex gap-2">
+                        <input type="number" name="checkpointOffsetKm" step="any" min="1" inputmode="decimal"
+                               th:value="${cp.offsetKm}" placeholder="nach km"
+                               class="w-28 rounded-xl bg-zinc-900 px-3 py-2.5 tabular-nums text-zinc-100 outline-none placeholder:text-zinc-600">
+                        <input type="text" name="checkpointLabel" th:value="${cp.label}" placeholder="was ist zu tun?"
+                               class="min-w-0 flex-1 rounded-xl bg-zinc-900 px-3 py-2.5 text-zinc-100 outline-none placeholder:text-zinc-600">
+                    </div>
+                </th:block>
+                <div class="flex gap-2">
+                    <input type="number" name="checkpointOffsetKm" step="any" min="1" inputmode="decimal"
+                           placeholder="nach km"
+                           class="w-28 rounded-xl bg-zinc-900 px-3 py-2.5 tabular-nums text-zinc-100 outline-none placeholder:text-zinc-600">
+                    <input type="text" name="checkpointLabel" placeholder="was ist zu tun?"
+                           class="min-w-0 flex-1 rounded-xl bg-zinc-900 px-3 py-2.5 text-zinc-100 outline-none placeholder:text-zinc-600">
+                </div>
+            </div>
+            <button type="button" id="add-checkpoint-row"
+                    class="self-start rounded-lg px-1 py-1 text-sm font-medium text-accent transition hover:text-accent-bright">
+                + weiterer Punkt
+            </button>
+        </fieldset>
+
+        <div class="mt-auto flex gap-3">
+            <a th:href="@{/vehicles/{v}/parts(v=${vehicle.id})}"
+               class="flex-1 rounded-xl bg-zinc-800 px-4 py-4 text-center text-base font-semibold text-zinc-200
+                      transition active:scale-[0.98] hover:bg-zinc-700">
+                Abbrechen
+            </a>
+            <button type="submit"
+                    class="flex-1 rounded-xl bg-accent px-4 py-4 text-base font-semibold text-accent-fg
+                           transition active:scale-[0.98] hover:bg-accent-bright
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright">
+                Speichern
+            </button>
+        </div>
+    </form>
+
+    <!-- delete lives outside the main form (nested forms are invalid HTML) -->
+    <form th:if="${part != null}" th:action="@{/vehicles/{v}/parts/{id}/delete(v=${vehicle.id},id=${part.id})}"
+          method="post" class="mt-3"
+          onsubmit="return confirm('Teil wirklich löschen?')">
+        <button type="submit"
+                class="w-full rounded-xl px-4 py-3 text-sm font-medium text-rose-400/80 transition hover:text-rose-300">
+            Teil löschen
+        </button>
+    </form>
+
+    <script>
+        // clone the last (empty) checkpoint row on demand — no framework needed
+        document.getElementById('add-checkpoint-row').addEventListener('click', () => {
+            const rows = document.getElementById('checkpoint-rows');
+            const clone = rows.lastElementChild.cloneNode(true);
+            clone.querySelectorAll('input').forEach(input => input.value = '');
+            rows.appendChild(clone);
+        });
+        // tap a suggestion chip to append that tag to the comma-separated input
+        document.querySelectorAll('.tag-suggestion').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const input = document.getElementById('tags-input');
+                const names = input.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                if (!names.includes(chip.dataset.tag)) names.push(chip.dataset.tag);
+                input.value = names.join(', ');
+            });
+        });
+    </script>
+
+</main>
+</body>
+</html>

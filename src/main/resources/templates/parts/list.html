@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full" xmlns:th="http://www.thymeleaf.org"
+      th:style="${accent != null} ? '--accent:' + ${accent.color} + ';--accent-fg:' + ${accent.onColor} : null">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#09090b">
+    <meta name="color-scheme" content="dark">
+    <title th:text="'Teile – ' + ${vehicle.name}">Teile</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <th:block th:replace="~{fragments/theme :: accent}"></th:block>
+</head>
+<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-accent/30">
+<main class="mx-auto flex min-h-full w-full max-w-md flex-col px-4
+             pt-[max(env(safe-area-inset-top),1rem)]
+             pb-[max(env(safe-area-inset-bottom),1rem)]">
+
+    <div th:replace="~{fragments/header :: header(home=true)}"></div>
+
+    <h1 class="mb-1 text-2xl font-extrabold tracking-tight" th:text="'Teile – ' + ${vehicle.name}">Teile</h1>
+    <p class="mb-4 text-sm text-zinc-500">
+        <th:block th:if="${overview.currentKm != null}">
+            Stand: <span class="tabular-nums" th:text="${#numbers.formatDecimal(overview.currentKm, 1, 'POINT', 0, 'POINT')}">19.200</span> km
+        </th:block>
+        <!-- unknown current km: no verdict — point at the baseline field instead -->
+        <th:block th:if="${overview.currentKm == null}">
+            Gesamt-km unbekannt – trage im
+            <a th:href="@{/vehicles/{id}/edit(id=${vehicle.id})}" class="text-accent hover:text-accent-bright">Fahrzeug</a>
+            eine Tacho-Ablesung ein.
+        </th:block>
+    </p>
+
+    <!-- ═══ Fälligkeit: open checkpoints of active parts, overdue first ═══ -->
+    <section th:if="${!overview.dueItems.isEmpty()}" class="mb-6 flex flex-col gap-2">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Wartung</h2>
+        <div th:each="item : ${overview.dueItems}"
+             th:data-testid="${item.overdue} ? 'due-overdue' : 'due-upcoming'"
+             th:classappend="${item.overdue} ? 'ring-1 ring-rose-500/40' : ''"
+             class="rounded-xl bg-zinc-900/60 p-3">
+            <div class="flex items-baseline justify-between gap-3">
+                <span class="min-w-0 truncate font-medium"
+                      th:text="${item.part.name} + ' · ' + ${item.checkpoint.label}">Kupplung · Kontrolle</span>
+                <span class="shrink-0 text-sm tabular-nums"
+                      th:classappend="${item.overdue} ? 'font-semibold text-rose-400' : 'text-zinc-400'">
+                    <th:block th:if="${item.remainingKm != null}"
+                              th:text="${item.overdue}
+                                       ? '+' + ${#numbers.formatDecimal(-item.remainingKm, 1, 'POINT', 0, 'POINT')} + ' km drüber'
+                                       : 'noch ' + ${#numbers.formatDecimal(item.remainingKm, 1, 'POINT', 0, 'POINT')} + ' km'">noch 23 km</th:block>
+                    <th:block th:if="${item.remainingKm == null}"
+                              th:text="'bei ' + ${#numbers.formatDecimal(item.dueAtKm, 1, 'POINT', 0, 'POINT')} + ' km'">bei 19.223 km</th:block>
+                </span>
+            </div>
+            <div class="mt-0.5 text-xs text-zinc-500"
+                 th:text="'fällig bei ' + ${#numbers.formatDecimal(item.dueAtKm, 1, 'POINT', 0, 'POINT')} + ' km'">fällig bei 19.223 km</div>
+
+            <!-- actions like on the part card: edit first, then the check-off
+                 confirm step (a <details> whose disclosure marker is hidden) -->
+            <div class="mt-2 flex items-start gap-3 border-t border-white/5 pt-2 text-sm">
+                <a th:href="@{/vehicles/{v}/parts/{id}/edit(v=${vehicle.id},id=${item.part.id})}"
+                   data-testid="due-edit-link"
+                   class="text-zinc-400 transition hover:text-zinc-100">Bearbeiten</a>
+            <details class="min-w-0 flex-1">
+                <summary class="cursor-pointer list-none font-medium text-accent hover:text-accent-bright [&::-webkit-details-marker]:hidden">Abhaken</summary>
+                <form th:action="@{/vehicles/{v}/parts/{p}/checkpoints/{c}/done(v=${vehicle.id},p=${item.part.id},c=${item.checkpoint.id})}"
+                      method="post" class="mt-2 flex flex-col gap-2">
+                    <label class="flex items-center justify-between gap-3 text-sm text-zinc-400">
+                        Erledigt am
+                        <input type="date" name="doneOn" required th:value="${today}"
+                               class="rounded-lg bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none">
+                    </label>
+                    <label class="flex items-center justify-between gap-3 text-sm text-zinc-400">
+                        bei km
+                        <input type="number" name="doneAtKm" step="any" min="0" inputmode="decimal"
+                               th:value="${overview.currentKm}"
+                               class="w-32 rounded-lg bg-zinc-950/60 px-3 py-2 text-right tabular-nums text-zinc-100 outline-none">
+                    </label>
+                    <button type="submit"
+                            class="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg transition hover:bg-accent-bright">
+                        Bestätigen
+                    </button>
+                </form>
+            </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ Aktive Teile ═══ -->
+    <section class="flex flex-col gap-3">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Eingebaut</h2>
+
+        <p th:if="${overview.activeParts.isEmpty()}"
+           class="rounded-xl bg-zinc-900/60 px-4 py-8 text-center text-zinc-500">
+            Noch keine Teile.
+        </p>
+
+        <div th:each="part : ${overview.activeParts}" th:data-part="${part.id}"
+             class="flex flex-col gap-2 rounded-2xl bg-zinc-900/60 p-4">
+            <div class="flex items-baseline justify-between gap-3">
+                <span class="min-w-0 truncate text-lg font-bold tracking-tight" th:text="${part.name}">Kupplung Sachs</span>
+                <span th:if="${part.priceEuro != null}" class="shrink-0 text-sm tabular-nums text-zinc-400"
+                      th:text="${part.priceEuro} + ' €'">250 €</span>
+            </div>
+            <div th:if="${!overview.tagNamesByPartId.get(part.id).isEmpty()}" class="flex flex-wrap gap-1.5">
+                <span th:each="tag : ${overview.tagNamesByPartId.get(part.id)}"
+                      class="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300" th:text="${tag}">kupplung</span>
+            </div>
+            <div class="text-sm text-zinc-500">
+                eingebaut bei <span class="tabular-nums" th:text="${#numbers.formatDecimal(part.installedAtKm, 1, 'POINT', 0, 'POINT')}">19.123</span> km
+                am <span th:text="${#temporals.format(part.installedOn, 'dd.MM.yyyy')}">11.07.2026</span>
+                <th:block th:if="${overview.currentKm != null}">
+                    · <span class="tabular-nums" th:text="${#numbers.formatDecimal(overview.currentKm - part.installedAtKm, 1, 'POINT', 0, 'POINT')}">77</span> km gelaufen
+                </th:block>
+            </div>
+            <p th:if="${part.details != null}" class="line-clamp-2 text-sm text-zinc-400" th:text="${part.details}">Details</p>
+            <div class="flex items-center gap-3 border-t border-white/5 pt-2 text-sm">
+                <a th:href="@{/vehicles/{v}/parts/{id}/edit(v=${vehicle.id},id=${part.id})}"
+                   class="text-zinc-400 transition hover:text-zinc-100">Bearbeiten</a>
+                <a th:href="@{/vehicles/{v}/parts/new(v=${vehicle.id},replaces=${part.id})}"
+                   data-testid="replace-part-link"
+                   class="text-accent transition hover:text-accent-bright">Ersetzen</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ Historie: retired parts, collapsed ═══ -->
+    <details th:if="${!overview.retiredParts.isEmpty()}" class="mt-6">
+        <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Historie (<span th:text="${overview.retiredParts.size()}">1</span>)
+        </summary>
+        <div class="mt-2 flex flex-col gap-2">
+            <div th:each="part : ${overview.retiredParts}" class="rounded-xl bg-zinc-900/40 p-3 text-sm text-zinc-500">
+                <div class="flex items-baseline justify-between gap-3">
+                    <span class="min-w-0 truncate font-medium text-zinc-400" th:text="${part.name}">Kupplung alt</span>
+                    <span class="shrink-0 tabular-nums"
+                          th:text="${#numbers.formatDecimal(part.retiredAtKm - part.installedAtKm, 1, 'POINT', 0, 'POINT')} + ' km gelaufen'">5.877 km gelaufen</span>
+                </div>
+                <div th:text="'ausgebaut bei ' + ${#numbers.formatDecimal(part.retiredAtKm, 1, 'POINT', 0, 'POINT')} + ' km am ' + ${#temporals.format(part.retiredOn, 'dd.MM.yyyy')}">ausgebaut …</div>
+                <div th:if="${part.replacedByPartId != null}"
+                     th:text="'ersetzt durch ' + ${overview.partNamesById.get(part.replacedByPartId)}">ersetzt durch …</div>
+            </div>
+        </div>
+    </details>
+
+    <a th:href="@{/vehicles/{v}/parts/new(v=${vehicle.id})}"
+       class="mt-6 w-full rounded-xl bg-accent px-4 py-4 text-center text-base font-semibold text-accent-fg
+              transition active:scale-[0.98] hover:bg-accent-bright
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright">
+        + Neues Teil
+    </a>
+
+</main>
+</body>
+</html>
