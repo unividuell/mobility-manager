@@ -141,6 +141,20 @@ class PartController(
         return "redirect:/vehicles/$vehicleId/parts"
     }
 
+    @PostMapping("/{partId}/checkpoints/{checkpointId}/done")
+    fun checkOff(
+        @AuthenticationPrincipal principal: OAuth2User,
+        @PathVariable vehicleId: Long,
+        @PathVariable partId: Long,
+        @PathVariable checkpointId: Long,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) doneOn: LocalDate,
+        @RequestParam(required = false) doneAtKm: Double?,
+    ): String {
+        val userId = currentUser.require(principal).id!!
+        service.checkOff(userId, vehicleId, partId, checkpointId, doneOn, doneAtKm)
+        return "redirect:/vehicles/$vehicleId/parts"
+    }
+
     /** The part's tags as the comma-string the form's text input expects. */
     private fun tagsAsInput(userId: Long, part: Part): String {
         val namesById = service.tagSuggestions(userId).associate { it.id!! to it.name }

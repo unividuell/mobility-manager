@@ -202,4 +202,54 @@ class PartControllerIntegrationTest @Autowired constructor(
             param("installedOn", "2026-07-11")
         }.andExpect { status { isNotFound() } }
     }
+
+    @Test
+    fun `checking off posts the confirmed values and redirects to the list`() {
+        val created = createClutch()
+        val checkpoint = created.checkpoints.single()
+
+        mockMvc.post("/vehicles/$vehicleId/parts/${created.id}/checkpoints/${checkpoint.id}/done") {
+            with(login())
+            param("doneOn", "2026-07-20")
+            param("doneAtKm", "19250")
+        }.andExpect { status { is3xxRedirection() } }
+
+        val done = parts.findById(created.id!!).orElseThrow().checkpoints.single()
+        done.doneOn shouldBe LocalDate.of(2026, 7, 20)
+        done.doneAtKm shouldBe 19_250.0
+        // done checkpoints leave the due list
+        mockMvc.get("/vehicles/$vehicleId/parts") { with(login()) }
+            .andReturn().response.contentAsString shouldNotContain "Abhaken"
+    }
+
+    @Test
+    fun `checking off without a reading stores only the date`() {
+        val created = createClutch()
+        val checkpoint = created.checkpoints.single()
+
+        mockMvc.post("/vehicles/$vehicleId/parts/${created.id}/checkpoints/${checkpoint.id}/done") {
+            with(login())
+            param("doneOn", "2026-07-20")
+        }.andExpect { status { is3xxRedirection() } }
+
+        val done = parts.findById(created.id!!).orElseThrow().checkpoints.single()
+        done.doneOn shouldBe LocalDate.of(2026, 7, 20)
+        done.doneAtKm shouldBe null
+    }
+
+    @Test
+    fun `checking off a foreign vehicle's checkpoint 404s`() {
+        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val foreignVehicle = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
+        val foreignPart = partService.create(
+            strangerId, foreignVehicle, name = "Fremdteil", details = null, priceEuro = null,
+            installedAtKm = 1.0, installedOn = LocalDate.of(2026, 7, 1),
+            tagNames = emptyList(), checkpoints = listOf(PartService.CheckpointInput(100.0, "X")),
+        )
+
+        mockMvc.post("/vehicles/$foreignVehicle/parts/${foreignPart.id}/checkpoints/${foreignPart.checkpoints.single().id}/done") {
+            with(login())
+            param("doneOn", "2026-07-20")
+        }.andExpect { status { isNotFound() } }
+    }
 }
