@@ -61,8 +61,10 @@
         <div class="grid grid-cols-2 gap-3">
             <label class="flex flex-col gap-2">
                 <span class="text-sm text-zinc-400">Einbau bei km</span>
-                <input type="number" name="installedAtKm" required step="any" min="0" inputmode="decimal"
-                       th:value="${part != null} ? ${part.installedAtKm} : ${currentKm}"
+                <!-- whole km only; the stored/derived Double is rounded for display -->
+                <input type="number" name="installedAtKm" required step="1" min="0" inputmode="numeric"
+                       th:with="km=${part != null} ? ${part.installedAtKm} : ${currentKm}"
+                       th:value="${km != null} ? ${#numbers.formatDecimal(km, 1, 'NONE', 0, 'NONE')} : null"
                        class="rounded-xl border-b-2 border-accent bg-zinc-900 px-4 py-3 tabular-nums
                               text-zinc-100 caret-accent outline-none">
             </label>
