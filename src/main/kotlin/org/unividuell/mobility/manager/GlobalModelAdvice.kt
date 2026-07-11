@@ -1,6 +1,6 @@
 package org.unividuell.mobility.manager
 
-import jakarta.servlet.http.HttpSession
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.ui.Model
@@ -23,11 +23,14 @@ class GlobalModelAdvice(
     @ModelAttribute
     fun populate(
         @AuthenticationPrincipal principal: OAuth2User?,
-        session: HttpSession,
+        request: HttpServletRequest,
         model: Model,
     ) {
+        // An HttpSession parameter would force session creation on every request —
+        // this advice also runs for anonymous ones (e.g. the /actuator/health probe),
+        // which must stay session-free. Authenticated requests always have a session.
         val vehicle = principal?.let {
-            vehicleContext.current(session, currentUser.require(it).id!!)
+            vehicleContext.current(request.getSession(true), currentUser.require(it).id!!)
         }
         model.addAttribute("selectedVehicle", vehicle)
         model.addAttribute("accent", vehicle?.let { Accent.of(it.color) })

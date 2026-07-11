@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.savedrequest.CookieRequestCache
 import org.unividuell.mobility.manager.user.GithubOAuth2UserService
 
 @Configuration
@@ -33,6 +34,12 @@ class SecurityConfig(
             }
             logout {
                 logoutSuccessUrl = "/login"
+            }
+            requestCache {
+                // keep the deep-link-after-login redirect in a cookie instead of the
+                // session — anonymous hits on protected routes (bots, crawlers) must
+                // not persist a session to SQLite just for the 302 to /login.
+                requestCache = CookieRequestCache()
             }
             // htmx POSTs don't carry a CSRF token; kept disabled deliberately.
             csrf { disable() }
