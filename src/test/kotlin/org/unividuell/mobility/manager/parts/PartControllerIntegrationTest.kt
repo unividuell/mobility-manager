@@ -322,4 +322,14 @@ class PartControllerIntegrationTest @Autowired constructor(
         body shouldContain "ersetzt durch Kupplung LUK"
         parts.findById(old.id!!).orElseThrow().active shouldBe false
     }
+
+    @Test
+    fun `due items link to the part's edit form`() {
+        val created = createClutch()
+
+        val body = mockMvc.get("/vehicles/$vehicleId/parts") { with(login()) }.andReturn().response.contentAsString
+
+        body shouldContain """data-testid="due-edit-link""""
+        body shouldContain "/vehicles/$vehicleId/parts/${created.id}/edit"
+    }
 }

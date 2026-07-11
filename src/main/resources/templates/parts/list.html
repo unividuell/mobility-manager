@@ -53,8 +53,14 @@
             <div class="mt-0.5 text-xs text-zinc-500"
                  th:text="'fällig bei ' + ${#numbers.formatDecimal(item.dueAtKm, 1, 'POINT', 0, 'POINT')} + ' km'">fällig bei 19.223 km</div>
 
-            <!-- check-off: a <details> confirm step with prefilled, editable values -->
-            <details class="mt-2">
+            <!-- actions: the check-off confirm step, plus a jump to the part's edit form.
+                 The link sits absolutely in the row so the expanding <details> below
+                 keeps its full width for the form. -->
+            <div class="relative mt-2">
+                <a th:href="@{/vehicles/{v}/parts/{id}/edit(v=${vehicle.id},id=${item.part.id})}"
+                   data-testid="due-edit-link"
+                   class="absolute right-0 top-0 text-sm text-zinc-400 transition hover:text-zinc-100">Bearbeiten</a>
+            <details>
                 <summary class="cursor-pointer text-sm font-medium text-accent hover:text-accent-bright">Abhaken</summary>
                 <form th:action="@{/vehicles/{v}/parts/{p}/checkpoints/{c}/done(v=${vehicle.id},p=${item.part.id},c=${item.checkpoint.id})}"
                       method="post" class="mt-2 flex flex-col gap-2">
@@ -75,6 +81,7 @@
                     </button>
                 </form>
             </details>
+            </div>
         </div>
     </section>
 
