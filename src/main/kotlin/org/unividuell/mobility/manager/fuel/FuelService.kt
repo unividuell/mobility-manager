@@ -1,6 +1,7 @@
 package org.unividuell.mobility.manager.fuel
 
 import org.springframework.stereotype.Service
+import org.unividuell.mobility.manager.vehicle.Vehicle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
@@ -62,6 +63,10 @@ class FuelService(
      */
     fun timeline(vehicleId: Long): List<FuelPoint> =
         FuelCalculator.resolve(repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicleId))
+
+    /** The vehicle's current total km derived from its fuel data — null when unknown. */
+    fun currentKm(vehicle: Vehicle): Double? =
+        CurrentKmCalculator.currentKm(vehicle, repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicle.id!!))
 
     /**
      * Aggregated stats for each of the given vehicles, keyed by vehicle id. Every
