@@ -252,4 +252,39 @@ class PartControllerIntegrationTest @Autowired constructor(
             param("doneOn", "2026-07-20")
         }.andExpect { status { isNotFound() } }
     }
+
+    @Test
+    fun `replace form is prefilled from the predecessor and carries the hidden id`() {
+        val old = createClutch()
+
+        val body = mockMvc.get("/vehicles/$vehicleId/parts/new") {
+            with(login())
+            param("replaces", old.id.toString())
+        }.andReturn().response.contentAsString
+
+        body shouldContain "ersetzt"
+        body shouldContain "Kupplung Sachs"                      // prefilled name
+        body shouldContain """name="replacesPartId""""
+        body shouldContain """value="${old.id}""""
+    }
+
+    @Test
+    fun `posting with replacesPartId retires the old part and shows both on the page`() {
+        val old = createClutch()
+
+        mockMvc.post("/vehicles/$vehicleId/parts") {
+            with(login())
+            param("name", "Kupplung LUK")
+            param("installedAtKm", "25000")
+            param("installedOn", "2027-01-15")
+            param("tags", "kupplung")
+            param("replacesPartId", old.id.toString())
+        }.andExpect { status { is3xxRedirection() } }
+
+        val body = mockMvc.get("/vehicles/$vehicleId/parts") { with(login()) }.andReturn().response.contentAsString
+        body shouldContain "Kupplung LUK"                        // active card
+        body shouldContain "Historie"                            // retired section appeared
+        body shouldContain "ersetzt durch Kupplung LUK"
+        parts.findById(old.id!!).orElseThrow().active shouldBe false
+    }
 }
