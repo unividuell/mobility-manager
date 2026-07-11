@@ -36,6 +36,7 @@ class PartService(
         val partNamesById: Map<Long, String>,
     )
 
+    @Transactional
     fun create(
         userId: Long,
         vehicleId: Long,
@@ -63,6 +64,7 @@ class PartService(
         )
     }
 
+    @Transactional
     fun update(
         userId: Long,
         vehicleId: Long,
