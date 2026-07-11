@@ -1,5 +1,7 @@
 package org.unividuell.mobility.manager.parts
 
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import org.junit.jupiter.api.BeforeEach
@@ -11,6 +13,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
 import org.unividuell.mobility.manager.user.AppUserRepository
@@ -117,5 +120,86 @@ class PartControllerIntegrationTest @Autowired constructor(
         val body = mockMvc.get("/vehicles") { with(login()) }.andReturn().response.contentAsString
         body shouldContain """data-testid="parts-list-link""""
         body shouldContain "/vehicles/$vehicleId/parts"
+    }
+
+    @Test
+    fun `create persists a part from the form and redirects to the list`() {
+        mockMvc.post("/vehicles/$vehicleId/parts") {
+            with(login())
+            param("name", "Kupplung Sachs")
+            param("details", "verstärkte Ausführung")
+            param("priceEuro", "250")
+            param("installedAtKm", "19123")
+            param("installedOn", "2026-07-11")
+            param("tags", "Kupplung, Sachs")
+            param("checkpointOffsetKm", "100", "")      // one filled row, one empty row (dropped)
+            param("checkpointLabel", "Kontrolle", "")
+        }.andExpect { status { is3xxRedirection() } }
+
+        val saved = parts.findAllByVehicleId(vehicleId).single()
+        saved.name shouldBe "Kupplung Sachs"
+        saved.priceCents shouldBe 25_000
+        saved.checkpoints.single().label shouldBe "Kontrolle"
+        tags.findAllByUserIdOrderByName(userId).map { it.name } shouldBe listOf("kupplung", "sachs")
+    }
+
+    @Test
+    fun `create rejects a half-filled checkpoint row with 400`() {
+        mockMvc.post("/vehicles/$vehicleId/parts") {
+            with(login())
+            param("name", "Kette")
+            param("installedAtKm", "100")
+            param("installedOn", "2026-07-11")
+            param("checkpointOffsetKm", "500")
+            param("checkpointLabel", "")               // offset without label
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `edit form is prefilled and update rewrites open checkpoints`() {
+        val created = createClutch()
+
+        val body = mockMvc.get("/vehicles/$vehicleId/parts/${created.id}/edit") { with(login()) }
+            .andReturn().response.contentAsString
+        body shouldContain "Kupplung Sachs"
+        body shouldContain "kupplung"
+
+        mockMvc.post("/vehicles/$vehicleId/parts/${created.id}") {
+            with(login())
+            param("name", "Kupplung Sachs Plus")
+            param("priceEuro", "250")
+            param("installedAtKm", "19123")
+            param("installedOn", "2026-07-11")
+            param("tags", "kupplung")
+            param("checkpointOffsetKm", "20000")
+            param("checkpointLabel", "Großinspektion")
+        }.andExpect { status { is3xxRedirection() } }
+
+        val updated = parts.findById(created.id!!).orElseThrow()
+        updated.name shouldBe "Kupplung Sachs Plus"
+        updated.checkpoints.single().label shouldBe "Großinspektion"
+    }
+
+    @Test
+    fun `delete removes the part from the list`() {
+        val created = createClutch()
+
+        mockMvc.post("/vehicles/$vehicleId/parts/${created.id}/delete") { with(login()) }
+            .andExpect { status { is3xxRedirection() } }
+
+        parts.count() shouldBe 0
+    }
+
+    @Test
+    fun `form POSTs 404 for a foreign vehicle`() {
+        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val foreign = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
+
+        mockMvc.post("/vehicles/$foreign/parts") {
+            with(login())
+            param("name", "Hijack")
+            param("installedAtKm", "1")
+            param("installedOn", "2026-07-11")
+        }.andExpect { status { isNotFound() } }
     }
 }
