@@ -171,14 +171,6 @@ class PartService(
         parts.deleteById(part.id!!)
     }
 
-    /**
-     * Removes every part of a vehicle — used when the vehicle itself is deleted.
-     * Ownership is the caller's concern. Aggregate-aware (children cascade).
-     */
-    fun deleteAllFor(vehicleId: Long) {
-        parts.deleteAll(parts.findAllByVehicleId(vehicleId))
-    }
-
     /** Splits a comma-separated tag input into normalised names: trimmed, lowercase, distinct. */
     private fun resolveTags(userId: Long, tagNames: List<String>): Set<PartTagRef> =
         tagNames.map { name ->
