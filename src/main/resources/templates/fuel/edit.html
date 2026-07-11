@@ -69,8 +69,10 @@
                 <span class="text-sm text-zinc-400">Gesamt-km</span>
                 <span class="text-xs text-zinc-600">Kilometerstand — für die Historie</span>
             </span>
+            <!-- whole km only; the stored Double would render as "19123.0" unrounded -->
             <input type="number" name="odometer" inputmode="numeric" step="1" min="0"
-                   placeholder="—" th:value="${entry.odometer}"
+                   placeholder="—"
+                   th:value="${entry.odometer != null} ? ${#numbers.formatDecimal(entry.odometer, 1, 'NONE', 0, 'NONE')} : null"
                    class="w-40 rounded-xl border-b-2 border-zinc-700 bg-zinc-900 px-4 py-3 text-right text-base
                           tabular-nums text-zinc-100 caret-accent outline-none placeholder:text-zinc-700
                           focus:border-accent">

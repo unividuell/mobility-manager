@@ -371,7 +371,9 @@ class FuelControllerIntegrationTest @Autowired constructor(
         body shouldContain """name="kilometers""""
         body shouldContain """value="680.0""""
         body shouldContain """name="odometer""""
-        body shouldContain """value="123456.0""""
+        // the odometer prefill renders as whole kilometers, not "123456.0"
+        body shouldContain """value="123456""""
+        body shouldNotContain """value="123456.0""""
         body shouldContain """data-testid="delete-entry""""
     }
 
