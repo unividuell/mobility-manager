@@ -14,8 +14,10 @@ data class Vehicle(
     // is typed directly per refueling; if not, the user types the absolute odometer
     // reading and the distance is computed from the previous one.
     val hasTripMeter: Boolean = true,
-    // Baseline anchor for trip-meter vehicles: an odometer reading taken at any
-    // point in time. Current km = baselineKm + trips strictly after baselineOn.
+    // Baseline anchor: an odometer reading taken at any point in time. Trip-meter
+    // vehicles: current km = baselineKm + trips strictly after baselineOn. Total-only
+    // vehicles (e.g. switched from trip-meter): the first reading after baselineOn
+    // measures its distance against baselineKm (see fuel.OdometerAnchor).
     val baselineKm: Double? = null,
     val baselineOn: LocalDate? = null,
     // Owned join rows: which users may manage this vehicle (M:N to users).

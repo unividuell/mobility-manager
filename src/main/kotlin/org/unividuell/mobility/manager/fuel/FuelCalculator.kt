@@ -32,9 +32,10 @@ object FuelCalculator {
      * Resolves [entries] (given in any order) and returns the points in the SAME
      * order as the input, so callers can keep their newest-first/oldest-first
      * convention. The chronological walk needed for odometer diffs happens
-     * internally (by date, then id as tie-break).
+     * internally (by date, then id as tie-break). An [anchor] (the vehicle's
+     * baseline reading) joins the walk as an extra reading at the end of its day.
      */
-    fun resolve(entries: List<FuelEntry>): List<FuelPoint> {
+    fun resolve(entries: List<FuelEntry>, anchor: OdometerAnchor? = null): List<FuelPoint> {
         // Walk chronologically (by date, then id) but key distances by the original
         // index, so the result keeps the input order and we never dereference an id
         // (entries may be unsaved with a null id).
@@ -43,8 +44,15 @@ object FuelCalculator {
         )
         val distances = arrayOfNulls<Double>(entries.size)
         var previousOdometer: Double? = null
+        var pendingAnchor = anchor
         for (i in chronological) {
             val entry = entries[i]
+            // The anchor is a reading as of the end of its day: once the walk moves
+            // past that day it becomes the reading the next odometer entry measures against.
+            if (pendingAnchor != null && entry.date > pendingAnchor.on) {
+                previousOdometer = pendingAnchor.km
+                pendingAnchor = null
+            }
             distances[i] = when {
                 entry.kilometers != null -> entry.kilometers
                 entry.odometer != null -> previousOdometer?.let { (entry.odometer - it).takeIf { d -> d > 0 } }

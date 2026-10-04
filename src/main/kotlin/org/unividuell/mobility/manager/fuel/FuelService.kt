@@ -62,8 +62,8 @@ class FuelService(
      * A vehicle's refuelings, newest first, each with its driven distance and
      * consumption resolved (see [FuelCalculator]) — backing the per-vehicle list.
      */
-    fun timeline(vehicleId: Long): List<FuelPoint> =
-        FuelCalculator.resolve(repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicleId))
+    fun timeline(vehicle: Vehicle): List<FuelPoint> =
+        FuelCalculator.resolve(repository.findAllByVehicleIdOrderByDateDescIdDesc(vehicle.id!!), vehicle.odometerAnchor)
 
     /** The vehicle's current total km derived from its fuel data — null when unknown. */
     fun currentKm(vehicle: Vehicle): Double? =
@@ -74,13 +74,16 @@ class FuelService(
      * requested id is present in the result — vehicles with no refuelings yet map
      * to empty stats — so the view can render uniformly without null checks.
      */
-    fun statsByVehicle(vehicleIds: Collection<Long>): Map<Long, VehicleFuelStats> {
+    fun statsByVehicle(vehicles: Collection<Vehicle>): Map<Long, VehicleFuelStats> {
+        val vehicleIds = vehicles.mapNotNull { it.id }
         val byVehicle = if (vehicleIds.isEmpty()) {
             emptyMap()
         } else {
             repository.findAllByVehicleIdIn(vehicleIds).groupBy { it.vehicleId }
         }
-        return vehicleIds.associateWith { VehicleFuelStats.from(FuelCalculator.resolve(byVehicle[it].orEmpty())) }
+        return vehicles.filter { it.id != null }.associate { vehicle ->
+            vehicle.id!! to VehicleFuelStats.from(FuelCalculator.resolve(byVehicle[vehicle.id].orEmpty(), vehicle.odometerAnchor))
+        }
     }
 
     /**
@@ -89,10 +92,10 @@ class FuelService(
      * the result screen. The delta is null on the first comparable refueling, or
      * when either side's consumption is unknown (e.g. the first odometer reading).
      */
-    fun summarize(saved: FuelEntry): SavedFuel {
-        val timeline = timeline(saved.vehicleId) // newest first
+    fun summarize(saved: FuelEntry, vehicle: Vehicle): SavedFuel {
+        val timeline = timeline(vehicle) // newest first
         val index = timeline.indexOfFirst { it.id == saved.id }
-        val point = timeline.getOrElse(index) { FuelCalculator.resolve(listOf(saved)).first() }
+        val point = timeline.getOrElse(index) { FuelCalculator.resolve(listOf(saved), vehicle.odometerAnchor).first() }
         val current = point.consumptionPer100Km
         // the previous refueling in time is the next element in a newest-first list
         val previous = timeline.getOrNull(index + 1)?.consumptionPer100Km

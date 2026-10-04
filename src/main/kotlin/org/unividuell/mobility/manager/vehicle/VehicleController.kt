@@ -31,7 +31,7 @@ class VehicleController(
         val userId = currentUser.require(principal).id!!
         val vehicles = service.listFor(userId)
         model.addAttribute("vehicles", vehicles)
-        model.addAttribute("stats", fuelService.statsByVehicle(vehicles.mapNotNull { it.id }))
+        model.addAttribute("stats", fuelService.statsByVehicle(vehicles))
         return "vehicles/index"
     }
 
