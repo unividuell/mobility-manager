@@ -14,10 +14,9 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
+import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
-import org.unividuell.mobility.manager.user.AppUserRepository
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.vehicle.VehicleRepository
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -30,10 +29,9 @@ class PartControllerIntegrationTest @Autowired constructor(
     private val parts: PartRepository,
     private val tags: TagRepository,
     private val vehicleService: VehicleService,
-    private val vehicles: VehicleRepository,
     private val fuelEntries: FuelEntryRepository,
     private val users: AppUserService,
-    private val userRepository: AppUserRepository,
+    private val db: DatabaseCleaner,
 ) {
 
     private val githubId = 4711L
@@ -42,12 +40,7 @@ class PartControllerIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun setUp() {
-        // dependency order: parts -> tags -> fuel_entries -> vehicles -> users
-        parts.deleteAll()
-        tags.deleteAll()
-        fuelEntries.deleteAll()
-        vehicles.deleteAll()
-        userRepository.deleteAll()
+        db.clean()
         userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
         vehicleId = vehicleService.create(userId, "Moped", "#06b6d4", hasTripMeter = false).id!!
     }
