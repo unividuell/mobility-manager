@@ -14,8 +14,7 @@ import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
-import org.unividuell.mobility.manager.fuel.FuelEntryRepository
-import org.unividuell.mobility.manager.user.AppUserRepository
+import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.user.AppUserService
 
 @SpringBootTest
@@ -26,8 +25,7 @@ class VehicleControllerIntegrationTest @Autowired constructor(
     private val vehicles: VehicleRepository,
     private val service: VehicleService,
     private val users: AppUserService,
-    private val userRepository: AppUserRepository,
-    private val fuelEntries: FuelEntryRepository,
+    private val db: DatabaseCleaner,
 ) {
 
     private val githubId = 4711L
@@ -35,10 +33,7 @@ class VehicleControllerIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun setUp() {
-        // dependency order: fuel_entries -> vehicles (cascades vehicle_managers) -> users
-        fuelEntries.deleteAll()
-        vehicles.deleteAll()
-        userRepository.deleteAll()
+        db.clean()
         userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
     }
 

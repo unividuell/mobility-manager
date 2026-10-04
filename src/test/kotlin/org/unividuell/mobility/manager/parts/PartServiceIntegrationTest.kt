@@ -10,11 +10,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.server.ResponseStatusException
+import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.fuel.FuelEntry
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
-import org.unividuell.mobility.manager.user.AppUserRepository
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.vehicle.VehicleRepository
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -25,10 +24,9 @@ class PartServiceIntegrationTest @Autowired constructor(
     private val parts: PartRepository,
     private val tags: TagRepository,
     private val vehicleService: VehicleService,
-    private val vehicles: VehicleRepository,
     private val fuelEntries: FuelEntryRepository,
     private val users: AppUserService,
-    private val userRepository: AppUserRepository,
+    private val db: DatabaseCleaner,
 ) {
 
     private var userA = 0L
@@ -37,12 +35,7 @@ class PartServiceIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun cleanDb() {
-        // dependency order: parts -> tags -> fuel_entries -> vehicles -> users
-        parts.deleteAll()
-        tags.deleteAll()
-        fuelEntries.deleteAll()
-        vehicles.deleteAll()
-        userRepository.deleteAll()
+        db.clean()
         userA = users.upsert(1001L, login = "alice", displayName = "Alice").id!!
         userB = users.upsert(1002L, login = "bob", displayName = "Bob").id!!
         mopedId = vehicleService.create(userA, "Moped", "#06b6d4").id!!

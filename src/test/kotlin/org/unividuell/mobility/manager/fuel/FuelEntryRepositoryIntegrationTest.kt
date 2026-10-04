@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.vehicle.Vehicle
 import org.unividuell.mobility.manager.vehicle.VehicleRepository
 import java.time.LocalDate
@@ -21,6 +22,7 @@ import java.time.LocalDate
 class FuelEntryRepositoryIntegrationTest @Autowired constructor(
     private val repository: FuelEntryRepository,
     private val vehicles: VehicleRepository,
+    private val db: DatabaseCleaner,
 ) {
 
     // FKs are enforced, so fuel entries must reference a real vehicle.
@@ -29,8 +31,7 @@ class FuelEntryRepositoryIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun cleanDb() {
-        repository.deleteAll()
-        vehicles.deleteAll()
+        db.clean()
         vehicleId = vehicles.save(Vehicle(name = "Kombi", color = "#06b6d4")).id!!
     }
 

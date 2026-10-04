@@ -7,9 +7,8 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.unividuell.mobility.manager.user.AppUserRepository
+import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.vehicle.VehicleRepository
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -19,9 +18,8 @@ class PartRepositoryIntegrationTest @Autowired constructor(
     private val parts: PartRepository,
     private val tags: TagRepository,
     private val vehicleService: VehicleService,
-    private val vehicles: VehicleRepository,
     private val users: AppUserService,
-    private val userRepository: AppUserRepository,
+    private val db: DatabaseCleaner,
 ) {
 
     private var userId = 0L
@@ -29,11 +27,7 @@ class PartRepositoryIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun cleanDb() {
-        // dependency order: parts (cascades checkpoints/part_tags) -> tags -> vehicles -> users
-        parts.deleteAll()
-        tags.deleteAll()
-        vehicles.deleteAll()
-        userRepository.deleteAll()
+        db.clean()
         userId = users.upsert(1001L, login = "alice", displayName = "Alice").id!!
         vehicleId = vehicleService.create(userId, "Moped", "#06b6d4").id!!
     }

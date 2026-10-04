@@ -12,10 +12,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.server.ResponseStatusException
+import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.fuel.FuelEntry
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
 import org.unividuell.mobility.manager.parts.*
-import org.unividuell.mobility.manager.user.AppUserRepository
 import org.unividuell.mobility.manager.user.AppUserService
 import java.time.LocalDate
 
@@ -27,7 +27,7 @@ class VehicleServiceIntegrationTest @Autowired constructor(
     private val fuelEntries: FuelEntryRepository,
     private val parts: PartRepository,
     private val users: AppUserService,
-    private val userRepository: AppUserRepository,
+    private val db: DatabaseCleaner,
 ) {
 
     // FKs are enforced, so the manager ids must be real users.
@@ -36,11 +36,7 @@ class VehicleServiceIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun cleanDb() {
-        // dependency order: parts -> fuel_entries -> vehicles (cascades vehicle_managers) -> users
-        parts.deleteAll()
-        fuelEntries.deleteAll()
-        repository.deleteAll()
-        userRepository.deleteAll()
+        db.clean()
         userA = users.upsert(1001L, login = "alice", displayName = "Alice").id!!
         userB = users.upsert(1002L, login = "bob", displayName = "Bob").id!!
     }

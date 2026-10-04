@@ -19,9 +19,8 @@ import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
-import org.unividuell.mobility.manager.user.AppUserRepository
+import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.vehicle.VehicleRepository
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -31,10 +30,9 @@ import java.time.LocalDate
 class FuelControllerIntegrationTest @Autowired constructor(
     private val mockMvc: MockMvc,
     private val repository: FuelEntryRepository,
-    private val vehicles: VehicleRepository,
     private val vehicleService: VehicleService,
     private val users: AppUserService,
-    private val userRepository: AppUserRepository,
+    private val db: DatabaseCleaner,
 ) {
 
     private val githubId = 4711L
@@ -46,9 +44,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @BeforeEach
     fun setUp() {
-        repository.deleteAll()
-        vehicles.deleteAll()
-        userRepository.deleteAll()
+        db.clean()
         userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
         sessionCookie = null
     }
