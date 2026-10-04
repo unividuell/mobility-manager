@@ -28,6 +28,13 @@ class FuelValueClassifierTest {
         }
 
         @Test
+        fun `the price bucket ends at 3`() {
+            classifier.classify(2.999, emptySet(), hasTripMeter = true) shouldBe FuelField.PRICE_PER_LITER
+            classifier.classify(3.0, emptySet(), hasTripMeter = true) shouldBe FuelField.LITERS
+            classifier.classify(4.51, emptySet(), hasTripMeter = true) shouldBe FuelField.LITERS
+        }
+
+        @Test
         fun `the odometer slot is never offered`() {
             // even a typical odometer-sized value lands in the trip slot for these vehicles
             classifier.classify(123_456.0, emptySet(), hasTripMeter = true) shouldBe FuelField.KILOMETERS

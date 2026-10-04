@@ -72,7 +72,7 @@ class FuelServiceTest {
     inner class ClassificationByMagnitude {
 
         @Test
-        fun `routes a value below 5 to PRICE_PER_LITER`() {
+        fun `routes a value below 3 to PRICE_PER_LITER`() {
             val service = newService(mockk(relaxed = true))
 
             val result = service.applyValue(FuelDraft(), "1.859")
@@ -81,7 +81,17 @@ class FuelServiceTest {
         }
 
         @Test
-        fun `routes a value between 5 and 150 to LITERS`() {
+        fun `routes a small refill between 3 and 5 to LITERS`() {
+            val service = newService(mockk(relaxed = true))
+
+            // a few liters from a jerry can, typed the German way — no €/L gets this high
+            val result = service.applyValue(FuelDraft(), "4,51")
+
+            result shouldBe FuelService.DraftResult.Pending(FuelDraft(liters = 4.51))
+        }
+
+        @Test
+        fun `routes a value between 3 and 150 to LITERS`() {
             val service = newService(mockk(relaxed = true))
 
             val result = service.applyValue(FuelDraft(), "45.32")
@@ -128,7 +138,7 @@ class FuelServiceTest {
         fun `falls back to PRICE_PER_LITER when LITERS is taken and value is closer to 1_85 in log-space`() {
             val service = newService(mockk(relaxed = true))
 
-            // Primary classification for 30 would be LITERS (5 ≤ x < 150), but
+            // Primary classification for 30 would be LITERS (3 ≤ x < 150), but
             // liters is already filled. Among the remaining slots PRICE_PER_LITER
             // (typical 1.85) is closer than KILOMETERS (typical 500) in log-distance.
             val result = service.applyValue(FuelDraft(liters = 45.0), "30")
