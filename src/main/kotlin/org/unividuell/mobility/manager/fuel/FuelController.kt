@@ -63,7 +63,7 @@ class FuelController(
 
         when (val result = service.applyValue(current, value)) {
             is FuelService.DraftResult.Completed -> {
-                val summary = service.summarize(result.saved)
+                val summary = service.summarize(result.saved, vehicles.first { it.id == result.saved.vehicleId })
                 renderPanel(model, vehicles, freshDraft(selected), saved = summary.point, delta = summary.delta)
             }
             is FuelService.DraftResult.Pending ->
@@ -101,7 +101,7 @@ class FuelController(
     ): String {
         val userId = currentUser.require(principal).id!!
         val vehicle = vehicleService.get(vehicleId, userId) // 404 unless the user owns it
-        val points = service.timeline(vehicleId)            // newest first, distance/consumption resolved
+        val points = service.timeline(vehicle)              // newest first, distance/consumption resolved
         // scale bars to the largest NON-outlier consumption, so one freak value
         // doesn't squash every normal bar; outliers are clamped to full height.
         val scaleMax = points.filter { !it.isOutlier }.mapNotNull { it.consumptionPer100Km }.maxOrNull()

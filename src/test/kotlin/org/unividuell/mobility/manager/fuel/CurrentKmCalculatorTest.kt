@@ -10,8 +10,8 @@ class CurrentKmCalculatorTest {
     private fun tripVehicle(baselineKm: Double? = null, baselineOn: LocalDate? = null) =
         Vehicle(id = 1, name = "Moped", color = "#fff", hasTripMeter = true, baselineKm = baselineKm, baselineOn = baselineOn)
 
-    private fun totalVehicle() =
-        Vehicle(id = 2, name = "Kombi", color = "#fff", hasTripMeter = false)
+    private fun totalVehicle(baselineKm: Double? = null, baselineOn: LocalDate? = null) =
+        Vehicle(id = 2, name = "Kombi", color = "#fff", hasTripMeter = false, baselineKm = baselineKm, baselineOn = baselineOn)
 
     private fun trip(date: LocalDate, km: Double) =
         FuelEntry(vehicleId = 1, date = date, liters = 5.0, pricePerLiter = 1.7, kilometers = km)
@@ -28,6 +28,21 @@ class CurrentKmCalculatorTest {
     @Test
     fun `total-only vehicle without readings is unknown`() {
         CurrentKmCalculator.currentKm(totalVehicle(), emptyList()) shouldBe null
+    }
+
+    @Test
+    fun `total-only vehicle switched from trip-meter starts at its baseline`() {
+        // no absolute reading since the switch yet: the baseline is the newest known km
+        val vehicle = totalVehicle(baselineKm = 105_322.0, baselineOn = LocalDate.of(2026, 9, 11))
+        val entries = listOf(reading(LocalDate.of(2026, 6, 10), 103_468.0))
+        CurrentKmCalculator.currentKm(vehicle, entries) shouldBe 105_322.0
+    }
+
+    @Test
+    fun `total-only vehicle prefers a reading beyond its baseline`() {
+        val vehicle = totalVehicle(baselineKm = 105_322.0, baselineOn = LocalDate.of(2026, 9, 11))
+        val entries = listOf(reading(LocalDate.of(2026, 10, 2), 106_075.0))
+        CurrentKmCalculator.currentKm(vehicle, entries) shouldBe 106_075.0
     }
 
     @Test

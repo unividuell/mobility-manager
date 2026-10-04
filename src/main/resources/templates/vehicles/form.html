@@ -55,8 +55,9 @@
                    class="mt-1 h-6 w-6 shrink-0 cursor-pointer accent-[var(--accent,#06b6d4)]">
         </label>
 
-        <!-- Baseline: an odometer reading taken today (or any day) that anchors
-             the absolute km count for trip-meter vehicles. Both or none. -->
+        <!-- Baseline: an odometer reading taken today (or any day). Trip-meter
+             vehicles count their total km from it; after a switch to total-only
+             the first absolute reading measures its distance against it. Both or none. -->
         <fieldset th:if="${vehicle != null}" id="baseline-fields"
                   class="flex flex-col gap-3 rounded-xl bg-zinc-900/60 p-4">
             <legend class="px-1 text-sm text-zinc-400">Tacho-Ablesung (Basis für Gesamt-km)</legend>
@@ -76,13 +77,6 @@
                               text-zinc-100 caret-accent outline-none">
             </label>
         </fieldset>
-        <script th:if="${vehicle != null}">
-            // baseline only applies to trip-meter vehicles; hide it otherwise
-            const tripMeter = document.querySelector('input[name=hasTripMeter]');
-            const toggle = () => document.getElementById('baseline-fields').classList.toggle('hidden', !tripMeter.checked);
-            tripMeter.addEventListener('change', toggle);
-            toggle();
-        </script>
 
         <div class="mt-auto flex gap-3">
             <a href="/vehicles"

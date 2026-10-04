@@ -10,6 +10,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.unividuell.mobility.manager.vehicle.Vehicle
 import java.time.LocalDate
 import java.util.Optional
 
@@ -23,6 +24,9 @@ class FuelServiceTest {
 
     private fun newService(repository: FuelEntryRepository): FuelService =
         FuelService(FuelValueClassifier(), repository)
+
+    private fun vehicle(id: Long, baselineKm: Double? = null, baselineOn: LocalDate? = null) =
+        Vehicle(id = id, name = "Kombi", color = "#fff", baselineKm = baselineKm, baselineOn = baselineOn)
 
     @Nested
     inner class InvalidInput {
@@ -340,7 +344,7 @@ class FuelServiceTest {
             val only = entry(id = 2L, liters = 45.0, kilometers = 600.0)
             timelineReturns(repository, only)
 
-            val summary = service.summarize(only)
+            val summary = service.summarize(only, vehicle(3L))
             summary.point.consumptionPer100Km!! shouldBe (7.5 plusOrMinus 1e-9)
             summary.delta.shouldBeNull()
         }
@@ -353,7 +357,7 @@ class FuelServiceTest {
             val previous = entry(id = 1L, liters = 40.0, kilometers = 800.0) // 5.0
             timelineReturns(repository, current, previous)
 
-            val delta = service.summarize(current).delta!!
+            val delta = service.summarize(current, vehicle(3L)).delta!!
             delta.previousPer100Km shouldBe (5.0 plusOrMinus 1e-9)
             delta.diff shouldBe (2.5 plusOrMinus 1e-9)
             delta.increased shouldBe true
@@ -368,7 +372,7 @@ class FuelServiceTest {
             val previous = entry(id = 1L, liters = 45.0, kilometers = 600.0) // 7.5
             timelineReturns(repository, current, previous)
 
-            val delta = service.summarize(current).delta!!
+            val delta = service.summarize(current, vehicle(3L)).delta!!
             delta.diff shouldBe ((-2.5) plusOrMinus 1e-9)
             delta.decreased shouldBe true
             delta.sign shouldBe "−"
@@ -383,15 +387,28 @@ class FuelServiceTest {
             val second = FuelEntry(id = 2L, vehicleId = 3L, date = LocalDate.of(2026, 1, 20), liters = 45.0, pricePerLiter = 1.7, odometer = 50_800.0)
             timelineReturns(repository, second, first)
 
-            val firstSummary = service.summarize(first)
+            val firstSummary = service.summarize(first, vehicle(3L))
             firstSummary.point.distanceKm.shouldBeNull()
             firstSummary.point.consumptionPer100Km.shouldBeNull()
             firstSummary.delta.shouldBeNull()
 
-            val secondSummary = service.summarize(second)
+            val secondSummary = service.summarize(second, vehicle(3L))
             secondSummary.point.distanceKm!! shouldBe (800.0 plusOrMinus 1e-9)
             secondSummary.point.consumptionPer100Km!! shouldBe (45.0 / 800.0 * 100.0 plusOrMinus 1e-9)
             secondSummary.delta.shouldBeNull() // previous reading has no consumption to compare against
+        }
+
+        @Test
+        fun `odometer entry after the vehicle's baseline measures against the baseline`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            // switched from trip-meter: an old stray reading, then the baseline at the switch
+            val stray = FuelEntry(id = 1L, vehicleId = 3L, date = LocalDate.of(2026, 6, 10), liters = 44.0, pricePerLiter = 1.7, odometer = 103_468.0)
+            val first = FuelEntry(id = 2L, vehicleId = 3L, date = LocalDate.of(2026, 10, 2), liters = 51.0, pricePerLiter = 2.019, odometer = 106_075.0)
+            timelineReturns(repository, first, stray)
+            val switched = vehicle(3L, baselineKm = 105_322.0, baselineOn = LocalDate.of(2026, 9, 11))
+
+            service.summarize(first, switched).point.distanceKm!! shouldBe (753.0 plusOrMinus 1e-9)
         }
     }
 
@@ -418,7 +435,7 @@ class FuelServiceTest {
                 entry(vehicleId = 3L, liters = 50.0, kilometers = 500.0),
             )
 
-            val stats = service.statsByVehicle(listOf(3L)).getValue(3L)
+            val stats = service.statsByVehicle(listOf(vehicle(3L))).getValue(3L)
 
             stats.entryCount shouldBe 2
             stats.totalKilometers shouldBe (1300.0 plusOrMinus 1e-9)
@@ -431,7 +448,7 @@ class FuelServiceTest {
             val service = newService(repository)
             every { repository.findAllByVehicleIdIn(listOf(7L)) } returns emptyList()
 
-            val stats = service.statsByVehicle(listOf(7L)).getValue(7L)
+            val stats = service.statsByVehicle(listOf(vehicle(7L))).getValue(7L)
 
             stats.entryCount shouldBe 0
             stats.totalKilometers shouldBe (0.0 plusOrMinus 1e-9)
@@ -446,11 +463,25 @@ class FuelServiceTest {
                 entry(vehicleId = 1L, liters = 30.0, kilometers = 600.0),
             )
 
-            val stats = service.statsByVehicle(listOf(1L, 2L))
+            val stats = service.statsByVehicle(listOf(vehicle(1L), vehicle(2L)))
 
             stats.keys shouldBe setOf(1L, 2L)
             stats.getValue(1L).averageConsumptionPer100Km!! shouldBe (5.0 plusOrMinus 1e-9)
             stats.getValue(2L).averageConsumptionPer100Km.shouldBeNull()
+        }
+
+        @Test
+        fun `measures the first reading after a vehicle's baseline against it`() {
+            val repository = mockk<FuelEntryRepository>()
+            val service = newService(repository)
+            every { repository.findAllByVehicleIdIn(listOf(3L)) } returns listOf(
+                FuelEntry(vehicleId = 3L, date = LocalDate.of(2026, 10, 2), liters = 51.0, pricePerLiter = 2.019, odometer = 106_075.0),
+            )
+            val switched = vehicle(3L, baselineKm = 105_322.0, baselineOn = LocalDate.of(2026, 9, 11))
+
+            val stats = service.statsByVehicle(listOf(switched)).getValue(3L)
+
+            stats.totalKilometers shouldBe (753.0 plusOrMinus 1e-9)
         }
 
         @Test
@@ -472,7 +503,7 @@ class FuelServiceTest {
             every { repository.findAllByVehicleIdIn(listOf(3L)) } returns listOf(6.0, 6.1, 6.2, 6.3, 6.4, 12.8)
                 .map { entry(vehicleId = 3L, liters = it, kilometers = 100.0) }
 
-            val stats = service.statsByVehicle(listOf(3L)).getValue(3L)
+            val stats = service.statsByVehicle(listOf(vehicle(3L))).getValue(3L)
 
             stats.entryCount shouldBe 6
             stats.outlierCount shouldBe 1

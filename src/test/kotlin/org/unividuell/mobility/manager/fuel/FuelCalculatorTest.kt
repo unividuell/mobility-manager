@@ -87,6 +87,29 @@ class FuelCalculatorTest {
         points.first { it.id == 2L }.consumptionPer100Km.shouldBeNull()
     }
 
+    @Test
+    fun `the first odometer entry after the anchor measures against the anchor`() {
+        // trip-meter history with one stray absolute reading, then the switch to
+        // total-only: the odometer was read (anchored) on the day of the last trip.
+        val stray = reading(1L, LocalDate.of(2026, 6, 10), liters = 44.0, odometer = 103_468.0)
+        val tripA = trip(2L, LocalDate.of(2026, 6, 23), liters = 46.0, kilometers = 605.0)
+        val tripB = trip(3L, LocalDate.of(2026, 9, 11), liters = 47.0, kilometers = 623.0)
+        val anchor = OdometerAnchor(km = 105_322.0, on = LocalDate.of(2026, 9, 11))
+        val first = reading(4L, LocalDate.of(2026, 10, 2), liters = 51.0, odometer = 106_075.0)
+        val second = reading(5L, LocalDate.of(2026, 10, 20), liters = 45.0, odometer = 106_700.0)
+
+        val points = FuelCalculator.resolve(listOf(second, first, tripB, tripA, stray), anchor)
+
+        // 106075 - 105322, not 106075 - 103468 (the stray reading before the anchor)
+        points.first { it.id == 4L }.distanceKm!! shouldBe (753.0 plusOrMinus 1e-9)
+        points.first { it.id == 4L }.consumptionPer100Km!! shouldBe (51.0 / 753.0 * 100.0 plusOrMinus 1e-9)
+        // later readings chain onto the previous reading as usual
+        points.first { it.id == 5L }.distanceKm!! shouldBe (625.0 plusOrMinus 1e-9)
+        // entries on/before the anchor day are untouched
+        points.first { it.id == 3L }.distanceKm!! shouldBe (623.0 plusOrMinus 1e-9)
+        points.first { it.id == 1L }.distanceKm.shouldBeNull()
+    }
+
     // For the outlier cases km is fixed at 100 so consumption (L/100km) equals litres.
     private fun consumptionEntries(vararg liters: Double): List<FuelEntry> =
         liters.mapIndexed { i, l -> trip(id = (i + 1).toLong(), date = LocalDate.of(2026, 1, i + 1), liters = l, kilometers = 100.0) }
