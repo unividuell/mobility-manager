@@ -122,6 +122,15 @@ class FuelServiceTest {
         }
 
         @Test
+        fun `accepts a price in cents as shown on the pump`() {
+            val service = newService(mockk(relaxed = true))
+
+            val result = service.applyValue(FuelDraft(), "201,9")
+
+            result shouldBe FuelService.DraftResult.Pending(FuelDraft(pricePerLiter = 2.019))
+        }
+
+        @Test
         fun `trims surrounding whitespace`() {
             val service = newService(mockk(relaxed = true))
 

@@ -2,6 +2,7 @@ package org.unividuell.mobility.manager.fuel
 
 import org.springframework.stereotype.Service
 import org.unividuell.mobility.manager.vehicle.Vehicle
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
@@ -44,7 +45,7 @@ class FuelService(
         val updated = run {
             parseValue(rawValue)?.let { parsed ->
                 classifier.classify(parsed, draft.filledFields, draft.hasTripMeter)
-                    ?.let { return@run draft.with(it, parsed) }
+                    ?.let { return@run draft.with(it.field, it.value) }
             }
             parseDate(trimmed)?.let { return@run draft.copy(date = it) }
             draft
@@ -164,12 +165,13 @@ class FuelService(
     }
 
     // German decimal commas are common at the pump; normalise before parsing.
+    // BigDecimal keeps the typed decimals, which the classifier reads (cent prices).
     // Zero and negative values are treated as invalid input.
-    private fun parseValue(rawValue: String): Double? =
+    private fun parseValue(rawValue: String): BigDecimal? =
         rawValue.trim()
             .replace(',', '.')
-            .toDoubleOrNull()
-            ?.takeIf { it > 0.0 }
+            .toBigDecimalOrNull()
+            ?.takeIf { it.signum() > 0 }
 
     private companion object {
         val DATE_FORMATS: List<DateTimeFormatter> = listOf(
