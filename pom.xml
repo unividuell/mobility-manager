@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.6</version>
+		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.unividuell</groupId>
@@ -28,9 +28,9 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
-		<!-- 2.3.0 is the first release with JVM target 25 support -->
-		<kotlin.version>2.3.0</kotlin.version>
-		<spring-modulith.version>2.0.6</spring-modulith.version>
+		<!-- 2.3.0 was the first release with JVM target 25 support; 2.4.10 matches the auth lib -->
+		<kotlin.version>2.4.10</kotlin.version>
+		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<mockk.version>1.13.13</mockk.version>
 		<kotest.version>5.9.1</kotest.version>
 	</properties>
@@ -107,7 +107,8 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
-			<artifactId>spring-modulith-observability</artifactId>
+			<!-- since 2.1 the plain artifact is a pom aggregator; the code lives in -core -->
+			<artifactId>spring-modulith-observability-core</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
