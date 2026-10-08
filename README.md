@@ -1,7 +1,8 @@
 # mobility-manager
 
 Spring Boot / Kotlin app for tracking car fuel costs with a distraction-free UI.
-Login is via GitHub OAuth2; data is stored in a local SQLite file.
+Sign-in comes from the auth lib (see [Auth lib](#auth-lib)): the organisation's GitHub App in
+production, a test-user picker locally. Data is stored in a local SQLite file.
 
 ## Deployment
 
@@ -47,9 +48,31 @@ echo "$GITHUB_TOKEN" | docker login ghcr.io -u <github-username> --password-stdi
 mkdir -p /opt/unividuell/mobility-manager && cd /opt/unividuell/mobility-manager
 curl -fsSL https://raw.githubusercontent.com/unividuell/mobility-manager/main/deploy/update.sh -o update.sh && chmod +x update.sh
 ./update.sh          # fetches compose + .env template, then stops
-# edit .env: MOBILITY_MANAGER_GITHUB_CLIENT_SECRET
+# edit .env: MOBILITY_MANAGER_GITHUB_CLIENT_SECRET (the GitHub App's client secret)
 ./update.sh          # ensures edge net, pulls, starts
 ```
 
-> The shared edge-caddy stack must be up (it owns 80/443 + TLS). The GitHub OAuth app's
-> callback URL must be `https://mobility.unividuell.org/login/oauth2/code/github`.
+> The shared edge-caddy stack must be up (it owns 80/443 + TLS). The organisation's GitHub App
+> (client ID in `application-production.yaml`) must list the callback URL
+> `https://mobility.unividuell.org/login/oauth2/code/github`.
+
+## Auth lib
+
+Sign-in, CSRF and logout come from `org.unividuell:auth-spring-boot-starter`
+(`/opt/unividuell/projects/auth-spring-boot-starter`). It is not on Maven Central: the build
+reads it from `maven-repo/`, which is committed. The app provides the lib's one hook,
+`AccountProvisioner` (`AppUserService`).
+
+| | locally (no profile) | tests (profile `test`) | production |
+|---|---|---|---|
+| `/login/start` | test-user picker | GitHub | GitHub |
+
+To take a new build of the snapshot, replace it in place and commit:
+
+```bash
+rm -rf maven-repo/org/unividuell/auth-spring-boot-starter
+(cd /opt/unividuell/projects/auth-spring-boot-starter && ./mvnw -B deploy -DskipTests -Dmaven.install.skip=true -DaltDeploymentRepository=app::file://$OLDPWD/maven-repo)
+```
+
+The repository's `updatePolicy=always` makes a redeployed snapshot win over the copy in `~/.m2`
+and in CI's Maven cache.
