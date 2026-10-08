@@ -30,7 +30,7 @@
     <div class="flex items-center gap-3">
         <a th:if="${home}" href="/" class="text-zinc-500 transition hover:text-zinc-200">Tanken</a>
         <span class="text-zinc-500" th:text="${currentUserName}">Fahrer</span>
-        <form action="/logout" method="post">
+        <form th:action="@{/logout}" method="post">
             <button type="submit"
                     class="rounded-lg px-2 py-1 text-zinc-500 transition hover:text-zinc-200
                            focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600">

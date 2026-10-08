@@ -13,7 +13,9 @@
             crossorigin="anonymous"></script>
     <th:block th:replace="~{fragments/theme :: accent}"></th:block>
 </head>
-<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-accent/30">
+<!-- htmx sends the CSRF token with every request it makes from this page -->
+<body class="h-full bg-zinc-950 text-zinc-100 antialiased selection:bg-accent/30"
+      th:hx-headers="|{&quot;X-XSRF-TOKEN&quot;: &quot;${_csrf.token}&quot;}|">
 <main class="mx-auto flex h-full w-full max-w-md flex-col px-4
              pt-[max(env(safe-area-inset-top),1rem)]
              pb-[max(env(safe-area-inset-bottom),1rem)]">

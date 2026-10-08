@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
+import org.unividuell.mobility.manager.user.TEST_CSRF_TOKEN
 import org.unividuell.mobility.manager.user.principal
 import org.unividuell.mobility.manager.user.signedInAs
 import org.unividuell.mobility.manager.user.withCsrfToken
@@ -105,5 +106,28 @@ class SecurityIntegrationTest @Autowired constructor(
         val body = mockMvc.get("/vehicles") { with(signedInAs(user)) }.andReturn().response.contentAsString
 
         body shouldContain "The Octocat"
+    }
+
+    @Test
+    fun `the login page starts the sign-in through the auth lib`() {
+        val body = mockMvc.get("/login").andReturn().response.contentAsString
+
+        body shouldContain """href="/login/start""""
+    }
+
+    @Test
+    fun `the htmx pages hand htmx the CSRF token as a request header`() {
+        for (page in listOf("/", "/vehicles")) {
+            val body = mockMvc.get(page) { with(signedInAs(user)) }.andReturn().response.contentAsString
+
+            body shouldContain """hx-headers="{&quot;X-XSRF-TOKEN&quot;: &quot;$TEST_CSRF_TOKEN&quot;}""""
+        }
+    }
+
+    @Test
+    fun `the logout form carries the CSRF token`() {
+        val body = mockMvc.get("/vehicles") { with(signedInAs(user)) }.andReturn().response.contentAsString
+
+        body shouldContain """<input type="hidden" name="_csrf" value="$TEST_CSRF_TOKEN"/>"""
     }
 }
