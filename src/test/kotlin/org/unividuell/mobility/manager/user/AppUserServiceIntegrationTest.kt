@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
+import org.unividuell.auth.ExternalIdentity
 import org.unividuell.mobility.manager.DatabaseCleaner
 import java.util.UUID
 
@@ -77,5 +78,14 @@ class AppUserServiceIntegrationTest @Autowired constructor(
 
         repository.count() shouldBe 1
         user.accountId shouldBe migrated
+    }
+
+    @Test
+    fun `provision hands the auth lib the account id its principal will carry`() {
+        val identity = ExternalIdentity(provider = "test", subject = "Fry", login = "Fry", name = null, email = null)
+
+        val accountId = service.provision(identity, roles = emptySet())
+
+        repository.findByAccountId(accountId)?.login shouldBe "Fry"
     }
 }

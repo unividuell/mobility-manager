@@ -33,7 +33,19 @@
 		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<mockk.version>1.13.13</mockk.version>
 		<kotest.version>5.9.1</kotest.version>
+		<!-- Ours, from maven-repo/: not on Maven Central (see README, "Auth lib"). -->
+		<unividuell-auth.version>0.2.0-SNAPSHOT</unividuell-auth.version>
 	</properties>
+	<repositories>
+		<repository>
+			<id>unividuell-local</id>
+			<url>file://${project.basedir}/maven-repo</url>
+			<!-- A redeployed snapshot must win over the copy in ~/.m2 and in CI's Maven cache. -->
+			<snapshots>
+				<updatePolicy>always</updatePolicy>
+			</snapshots>
+		</repository>
+	</repositories>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -52,8 +64,9 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+			<groupId>org.unividuell</groupId>
+			<artifactId>auth-spring-boot-starter</artifactId>
+			<version>${unividuell-auth.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -88,11 +101,6 @@
 		     repository does not support SQLite. Re-add when switching to a
 		     supported DB (H2/Postgres/etc.) or when event publication is
 		     needed. -->
-
-		<dependency>
-			<groupId>org.thymeleaf.extras</groupId>
-			<artifactId>thymeleaf-extras-springsecurity6</artifactId>
-		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

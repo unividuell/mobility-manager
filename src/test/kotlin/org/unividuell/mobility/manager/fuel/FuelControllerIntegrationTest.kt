@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockHttpServletRequestDsl
 import org.springframework.test.web.servlet.MockMvc
@@ -20,7 +19,9 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
 import org.unividuell.mobility.manager.DatabaseCleaner
+import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
+import org.unividuell.mobility.manager.user.signedInAs
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -35,7 +36,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
     private val db: DatabaseCleaner,
 ) {
 
-    private val githubId = 4711L
+    private lateinit var user: AppUser
     private var userId = 0L
 
     // Spring Session (JDBC) is cookie-based, so to keep the selected-vehicle context
@@ -45,11 +46,12 @@ class FuelControllerIntegrationTest @Autowired constructor(
     @BeforeEach
     fun setUp() {
         db.clean()
-        userId = users.upsert(provider = "github", subject = githubId.toString(), login = "octocat", name = "The Octocat").id!!
+        user = users.upsert(provider = "github", subject = "4711", login = "octocat", name = "The Octocat")
+        userId = user.id!!
         sessionCookie = null
     }
 
-    private fun login(): RequestPostProcessor = oauth2Login().attributes { it["id"] = githubId }
+    private fun login(): RequestPostProcessor = signedInAs(user)
 
     @Test
     fun `GET root renders a four-slot draft with the date prefilled and no vehicle quick-entry`() {

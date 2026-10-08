@@ -1,12 +1,20 @@
 package org.unividuell.mobility.manager.user
 
 import org.springframework.stereotype.Service
+import org.unividuell.auth.AccountProvisioner
+import org.unividuell.auth.ExternalIdentity
 import java.util.UUID
 
+/** The auth lib's account hook: both sign-in doors, GitHub and the local test login, end here. */
 @Service
 class AppUserService(
     private val repository: AppUserRepository,
-) {
+) : AccountProvisioner {
+
+    /** No roles are configured, so [roles] is always empty. */
+    override fun provision(identity: ExternalIdentity, roles: Set<String>): UUID =
+        upsert(provider = identity.provider, subject = identity.subject, login = identity.login, name = identity.name).accountId
+
 
     /**
      * Creates the user on first sign-in, or refreshes the mirrored fields (login,

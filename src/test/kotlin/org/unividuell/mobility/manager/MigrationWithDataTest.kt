@@ -43,6 +43,24 @@ class MigrationWithDataTest {
         }
     }
 
+    @Test
+    fun `V8 signs everyone out once`(@TempDir dir: Path) {
+        val dataSource = SingleConnectionDataSource("jdbc:sqlite:${dir.resolve("mm.db")}?foreign_keys=true", true)
+        try {
+            val jdbc = JdbcTemplate(dataSource)
+            flyway(dataSource, target = "7").migrate()
+            jdbc.update("INSERT INTO SPRING_SESSION VALUES ('primary', 'session', 0, 0, 1800, 0, 'octocat')")
+            jdbc.update("INSERT INTO SPRING_SESSION_ATTRIBUTES VALUES ('primary', 'SPRING_SECURITY_CONTEXT', x'00')")
+
+            flyway(dataSource, target = "8").migrate()
+
+            jdbc.queryForObject("SELECT COUNT(*) FROM SPRING_SESSION", Int::class.java) shouldBe 0
+            jdbc.queryForObject("SELECT COUNT(*) FROM SPRING_SESSION_ATTRIBUTES", Int::class.java) shouldBe 0
+        } finally {
+            dataSource.destroy()
+        }
+    }
+
     private fun flyway(dataSource: SingleConnectionDataSource, target: String): Flyway =
         Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").target(target).load()
 }

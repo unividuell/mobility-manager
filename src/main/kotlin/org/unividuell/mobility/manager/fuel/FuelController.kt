@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpSession
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.server.ResponseStatusException
+import org.unividuell.auth.AuthPrincipal
 import org.unividuell.mobility.manager.user.CurrentUser
 import org.unividuell.mobility.manager.vehicle.Vehicle
 import org.unividuell.mobility.manager.vehicle.VehicleContext
@@ -31,7 +31,7 @@ class FuelController(
 ) {
 
     @GetMapping
-    fun index(@AuthenticationPrincipal principal: OAuth2User, session: HttpSession, model: Model): String {
+    fun index(@AuthenticationPrincipal principal: AuthPrincipal, session: HttpSession, model: Model): String {
         val userId = currentUser.require(principal).id!!
         renderPanel(model, vehicleService.listFor(userId), freshDraft(session, userId), saved = null)
         return "index"
@@ -39,7 +39,7 @@ class FuelController(
 
     @PostMapping("/fuel/value")
     fun submitValue(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @RequestParam value: String,
         @RequestParam(required = false) liters: Double?,
         @RequestParam(required = false) pricePerLiter: Double?,
@@ -73,7 +73,7 @@ class FuelController(
     }
 
     @PostMapping("/fuel/reset")
-    fun reset(@AuthenticationPrincipal principal: OAuth2User, session: HttpSession, model: Model): String {
+    fun reset(@AuthenticationPrincipal principal: AuthPrincipal, session: HttpSession, model: Model): String {
         val userId = currentUser.require(principal).id!!
         renderPanel(model, vehicleService.listFor(userId), freshDraft(session, userId), saved = null)
         return "fragments/panel :: panel"
@@ -81,7 +81,7 @@ class FuelController(
 
     @PostMapping("/fuel/undo")
     fun undo(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @RequestParam id: Long,
         session: HttpSession,
         model: Model,
@@ -95,7 +95,7 @@ class FuelController(
 
     @GetMapping("/vehicles/{vehicleId}/fuel")
     fun list(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         model: Model,
     ): String {
@@ -117,7 +117,7 @@ class FuelController(
 
     @GetMapping("/vehicles/{vehicleId}/fuel/{id}/edit")
     fun editForm(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @PathVariable id: Long,
         model: Model,
@@ -132,7 +132,7 @@ class FuelController(
 
     @PostMapping("/vehicles/{vehicleId}/fuel/{id}")
     fun updateEntry(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @PathVariable id: Long,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
@@ -149,7 +149,7 @@ class FuelController(
 
     @PostMapping("/vehicles/{vehicleId}/fuel/{id}/delete")
     fun deleteEntry(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @PathVariable id: Long,
     ): String {

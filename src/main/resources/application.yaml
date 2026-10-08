@@ -1,14 +1,6 @@
 spring:
   application:
     name: mobility-manager
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: Ov23lieWH11YI3qPP5Og
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope: read:user
   datasource:
     # date_class=text + an ISO date format make the driver store java.time
     # dates (FuelEntry.date) as readable yyyy-MM-dd TEXT instead of epoch millis.

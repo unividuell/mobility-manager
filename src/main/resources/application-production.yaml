@@ -8,12 +8,13 @@ spring:
       client:
         registration:
           github:
-            # client-id is public (already in the repo). Override only if
-            # production uses a separate GitHub OAuth app with a different
-            # authorization callback URL; otherwise the dev app's id is reused.
-            client-id: ${MOBILITY_MANAGER_GITHUB_CLIENT_ID:Ov23lieWH11YI3qPP5Og}
+            # The organisation's GitHub App, shared by every unividuell app (up to ten
+            # callback URLs, https://mobility.unividuell.org/login/oauth2/code/github
+            # among them). Public client ID, safe to commit.
+            client-id: Iv23liJTgm6EeJ6XshRh
             # required: no default, so the app fails fast if the secret is missing.
             client-secret: ${MOBILITY_MANAGER_GITHUB_CLIENT_SECRET}
+            scope: read:user
   datasource:
     # absolute path inside the container; docker-compose bind-mounts the host
     # dir /opt/unividuell/mobility-manager onto /data, so the SQLite file
