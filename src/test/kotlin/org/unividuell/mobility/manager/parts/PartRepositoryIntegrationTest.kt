@@ -28,7 +28,7 @@ class PartRepositoryIntegrationTest @Autowired constructor(
     @BeforeEach
     fun cleanDb() {
         db.clean()
-        userId = users.upsert(1001L, login = "alice", displayName = "Alice").id!!
+        userId = users.upsert(provider = "github", subject = "1001", login = "alice", name = "Alice").id!!
         vehicleId = vehicleService.create(userId, "Moped", "#06b6d4").id!!
     }
 

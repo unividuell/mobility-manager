@@ -34,7 +34,7 @@ class VehicleControllerIntegrationTest @Autowired constructor(
     @BeforeEach
     fun setUp() {
         db.clean()
-        userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
+        userId = users.upsert(provider = "github", subject = githubId.toString(), login = "octocat", name = "The Octocat").id!!
     }
 
     private fun login(): RequestPostProcessor = oauth2Login().attributes { it["id"] = githubId }
@@ -107,7 +107,7 @@ class VehicleControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `select rejects a vehicle the user does not manage`() {
-        val otherUserId = users.upsert(githubId = 2222L, login = "stranger", displayName = "Stranger").id!!
+        val otherUserId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreign = service.create(otherUserId, "Fremder", "#f43f5e").id!!
 
         mockMvc.post("/vehicles/$foreign/select") { with(login()) }

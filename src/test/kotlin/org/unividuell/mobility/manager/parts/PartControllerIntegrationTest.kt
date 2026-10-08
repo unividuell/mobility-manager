@@ -41,7 +41,7 @@ class PartControllerIntegrationTest @Autowired constructor(
     @BeforeEach
     fun setUp() {
         db.clean()
-        userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
+        userId = users.upsert(provider = "github", subject = githubId.toString(), login = "octocat", name = "The Octocat").id!!
         vehicleId = vehicleService.create(userId, "Moped", "#06b6d4", hasTripMeter = false).id!!
     }
 
@@ -100,7 +100,7 @@ class PartControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `parts page 404s for a foreign vehicle`() {
-        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val strangerId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreign = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
 
         mockMvc.get("/vehicles/$foreign/parts") { with(login()) }
@@ -220,7 +220,7 @@ class PartControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `form POSTs 404 for a foreign vehicle`() {
-        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val strangerId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreign = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
 
         mockMvc.post("/vehicles/$foreign/parts") {
@@ -267,7 +267,7 @@ class PartControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `checking off a foreign vehicle's checkpoint 404s`() {
-        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val strangerId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreignVehicle = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
         val foreignPart = partService.create(
             strangerId, foreignVehicle, name = "Fremdteil", details = null, priceEuro = null,

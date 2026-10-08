@@ -45,7 +45,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
     @BeforeEach
     fun setUp() {
         db.clean()
-        userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
+        userId = users.upsert(provider = "github", subject = githubId.toString(), login = "octocat", name = "The Octocat").id!!
         sessionCookie = null
     }
 
@@ -320,7 +320,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `undo does not delete an entry that belongs to another user's vehicle`() {
-        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val otherUserId = users.upsert(provider = "github", subject = "1234", login = "stranger", name = "Stranger").id!!
         val foreignVehicleId = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
         val foreign = repository.save(entry(foreignVehicleId))
 
@@ -345,7 +345,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `fuel list 404s for a vehicle the user does not own`() {
-        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val otherUserId = users.upsert(provider = "github", subject = "1234", login = "stranger", name = "Stranger").id!!
         val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
 
         mockMvc.get("/vehicles/$foreignVid/fuel") { with(login()) }
@@ -375,7 +375,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `edit form 404s for an entry of a vehicle the user does not own`() {
-        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val otherUserId = users.upsert(provider = "github", subject = "1234", login = "stranger", name = "Stranger").id!!
         val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
         val foreign = repository.save(entry(foreignVid))
 
@@ -407,7 +407,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `updating an entry of another user's vehicle is a no-op`() {
-        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val otherUserId = users.upsert(provider = "github", subject = "1234", login = "stranger", name = "Stranger").id!!
         val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
         val foreign = repository.save(entry(foreignVid))
 
@@ -436,7 +436,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `deleting another user's entry from the list is a no-op`() {
-        val otherUserId = users.upsert(githubId = 1234L, login = "stranger", displayName = "Stranger").id!!
+        val otherUserId = users.upsert(provider = "github", subject = "1234", login = "stranger", name = "Stranger").id!!
         val foreignVid = vehicleService.create(otherUserId, "Fremder", "#f43f5e").id!!
         val foreign = repository.save(entry(foreignVid))
 

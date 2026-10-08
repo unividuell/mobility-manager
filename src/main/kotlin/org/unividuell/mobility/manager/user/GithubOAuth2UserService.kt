@@ -24,7 +24,7 @@ class GithubOAuth2UserService(
         val login = attributes["login"] as String
         val displayName = (attributes["name"] as String?)?.takeIf { it.isNotBlank() } ?: login
 
-        users.upsert(githubId, login, displayName)
+        users.upsert(provider = "github", subject = githubId.toString(), login = login, name = attributes["name"] as String?)
 
         return DefaultOAuth2User(
             oauthUser.authorities,

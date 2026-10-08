@@ -16,7 +16,7 @@ class CurrentUser(
     fun require(principal: OAuth2User): AppUser {
         val githubId = (principal.getAttribute<Number>("id")
             ?: error("authenticated principal has no GitHub id attribute")).toLong()
-        return repository.findByGithubId(githubId)
+        return repository.findByProviderAndSubject("github", githubId.toString())
             ?: error("no persisted user for GitHub id $githubId")
     }
 }
