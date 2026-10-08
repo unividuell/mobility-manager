@@ -46,8 +46,10 @@ Zwei Commits, damit ein Bruch durch das Upgrade nicht in der Auth-Migration unte
 | `kotlin.version` | 2.3.0 | 2.4.10 |
 | `spring-modulith.version` | 2.0.6 | 2.1.1 |
 
-Das ist die Paarung von Lib und countdown. `BP_JVM_VERSION` bleibt 25. Am Code ändert sich nur,
-was das Upgrade erzwingt.
+Das ist die Paarung von Lib und countdown. `BP_JVM_VERSION` bleibt 25. Erzwungen wird nur ein
+Wechsel: `spring-modulith-observability` ist seit Modulith 2.1 ein POM-Aggregator ohne Jar, die
+Dependency wird zu `spring-modulith-observability-core`. Der Code bleibt unverändert, alle 154 Tests
+laufen grün (vorab in einer Kopie geprüft).
 
 **Lib einbinden (Commit 2):**
 
@@ -172,11 +174,12 @@ würden mit 500 statt mit dem Login antworten. Jeder meldet sich einmal neu an.
 - **`AppUserRepository`:** `findByProviderAndSubject(provider, subject)`,
   `findByAccountId(accountId)` statt `findByGithubId`.
 - **`AppUserService` implementiert `AccountProvisioner`:**
-  - `upsert(identity: ExternalIdentity): AppUser` sucht über `(provider, subject)`, legt sonst
-    mit `UUID.randomUUID()` an, frischt bei jedem Sign-in `login` und `displayName` auf
-    (`identity.name`, falls nicht leer, sonst `login`).
-  - `provision(identity, roles) = upsert(identity).accountId`. `roles` sind immer leer, keine
-    Rollen konfiguriert.
+  - `upsert(provider, subject, login, name): AppUser` sucht über `(provider, subject)`, legt sonst
+    mit `UUID.randomUUID()` an, frischt bei jedem Sign-in `login` und `displayName` auf (`name`,
+    falls nicht leer, sonst `login`). Die Signatur ist bewusst lib-unabhängig, so lässt sich die
+    Account-Umstellung als eigener Schritt vor dem Lib-Wechsel ausliefern.
+  - `provision(identity, roles)` übersetzt `ExternalIdentity` auf `upsert` und gibt die
+    `accountId` zurück. `roles` sind immer leer, keine Rollen konfiguriert.
   - Weiterhin Suchen-dann-Speichern wie bisher. Ein gleichzeitiger Erst-Login desselben Users
     endet in der `UNIQUE`-Verletzung, also einem gescheiterten Sign-in, den ein erneuter Klick
     behebt. Bei einem Ein-Personen-Betrieb kein Grund für `ON CONFLICT`.
@@ -189,9 +192,9 @@ würden mit 500 statt mit dem Login antworten. Jeder meldet sich einmal neu an.
   `sec:authentication="principal.attributes['displayName']"`. Der `AuthPrincipal` trägt nur
   `provider` und `login`.
 - **Gelöscht:** `GithubOAuth2UserService`.
-- **UUID in SQLite:** Ob Spring Data JDBC und der xerial-Treiber `UUID` ↔ `TEXT` ohne Hilfe
-  abbilden, sichert ein Repository-Test ab. Falls nicht, kommt ein Converter-Paar in
-  `DatabaseConfig.jdbcCustomConversions` dazu, wie bei `LocalDate`.
+- **UUID in SQLite:** Spring Data JDBC und der xerial-Treiber bilden `UUID` ohne Converter auf
+  kanonischen `TEXT` ab, also auf dieselbe Form, die V7 schreibt (vorab geprüft). Ein
+  Repository-Test hält das fest.
 
 ## 4 · Konfiguration je Umgebung
 
@@ -221,9 +224,14 @@ würden mit 500 statt mit dem Login antworten. Jeder meldet sich einmal neu an.
 
 - Ein Test-Helper `signedInAs(user: AppUser): RequestPostProcessor` ersetzt
   `oauth2Login().attributes { it["id"] = githubId }`. Er hängt einen `AuthPrincipal` aus
-  `user.accountId`, `provider`, `login` an (`oauth2Login().oauth2User(…)`).
-- `users.upsert(githubId, login, displayName)` → `users.upsert(ExternalIdentity(…))`.
-- Jeder mutierende MockMvc-Request (POST/PUT/DELETE) bekommt `.with(csrf())`.
+  `user.accountId`, `provider`, `login` an (`oauth2Login().oauth2User(…)`) und trägt das
+  CSRF-Token wie ein Browser: Cookie `XSRF-TOKEN` plus gleichlautender Header `X-XSRF-TOKEN`.
+- **Nicht** `.with(csrf())` aus spring-security-test: Es ersetzt das Token-Repository im geteilten
+  `CsrfFilter` dauerhaft durch eine Session-Variante. Danach legt jeder Request in diesem Kontext
+  eine Session an, und `AnonymousSessionIntegrationTest` scheitert im Gesamtlauf (vorab
+  beobachtet; die Lib hat dasselbe Problem mit `@DirtiesContext` gelöst).
+- `users.upsert(githubId, login, displayName)` → `users.upsert(provider = "github", subject = …,
+  login = …, name = …)`.
 
 **Neu:**
 
@@ -235,10 +243,13 @@ würden mit 500 statt mit dem Login antworten. Jeder meldet sich einmal neu an.
   Name werden aufgefrischt, `github:x` und `test:x` sind zwei Accounts, `name = null` fällt auf
   `login` zurück.
 - **Repository:** `accountId` übersteht den Roundtrip durch SQLite.
-- **Security:** anonymer Seitenaufruf → 302 auf `/login`; `POST /logout` → 302 auf `/login`;
-  POST ohne Token → 403; POST mit `X-XSRF-TOKEN`-Header → durch; die htmx-Seiten rendern
-  `hx-headers` mit dem Token; `/login/start` leitet im Testprofil auf
-  `/oauth2/authorization/github`.
+- **Security:** anonymer Seitenaufruf → 302 auf `/login`; anonymer htmx-POST mit gültigem Token
+  (Session abgelaufen) → 302 auf `/login`; `POST /logout` → 302 auf `/login`; POST ohne Token →
+  403; Header-Token ≠ Cookie-Token → 403; POST mit `X-XSRF-TOKEN`-Header → durch; die
+  htmx-Seiten rendern `hx-headers` mit dem Token; das Logout-Formular trägt `_csrf`;
+  `/login/start` leitet im Testprofil auf `/oauth2/authorization/github`.
+- **Picker-Login** (`TestLoginIntegrationTest`, bewusst ohne Profil, Datasource per Property): Fry
+  wählen legt `test/Fry` an und öffnet die App.
 
 **Manuell:** V7 und V8 auf einer Kopie von `data/mobility-manager.db` laufen lassen; lokal
 starten und den Picker-Login samt Tank-, Fahrzeug- und Teile-Flow im Browser durchgehen.
