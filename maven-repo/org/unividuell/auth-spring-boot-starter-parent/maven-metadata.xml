@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <metadata>
   <groupId>org.unividuell</groupId>
-  <artifactId>auth-spring-boot-starter</artifactId>
+  <artifactId>auth-spring-boot-starter-parent</artifactId>
   <versioning>
     <release>0.3.0</release>
     <versions>

@@ -58,21 +58,18 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/mobility-manager/main/de
 
 ## Auth lib
 
-Sign-in, CSRF and logout come from `org.unividuell:auth-spring-boot-starter`
-(`/opt/unividuell/projects/auth-spring-boot-starter`). It is not on Maven Central: the build
-reads it from `maven-repo/`, which is committed. The app provides the lib's one hook,
-`AccountProvisioner` (`AppUserService`).
+Sign-in, CSRF, logout and the redirects to `/login` come from
+`org.unividuell:auth-spring-boot-starter` (`/opt/unividuell/projects/auth-spring-boot-starter`),
+configured as `frontend: server-rendered` with `login-page: /login`. It is not on Maven Central: the
+build reads the release from `maven-repo/`, which is committed — the parent POM, the starter, and
+`auth-spring-boot-starter-test`, whose `signedInAs` and `withCsrfToken` the tests use. The app
+provides the lib's one hook, `AccountProvisioner` (`AppUserService`).
 
 | | locally (no profile) | tests (profile `test`) | production |
 |---|---|---|---|
 | `/login/start` | test-user picker | GitHub | GitHub |
 
-To take a new build of the snapshot, replace it in place and commit:
-
-```bash
-rm -rf maven-repo/org/unividuell/auth-spring-boot-starter
-(cd /opt/unividuell/projects/auth-spring-boot-starter && ./mvnw -B deploy -DskipTests -Dmaven.install.skip=true -DaltDeploymentRepository=app::file://$OLDPWD/maven-repo)
-```
-
-The repository's `updatePolicy=always` makes a redeployed snapshot win over the copy in `~/.m2`
-and in CI's Maven cache.
+To move to a new release: delete `maven-repo/org/unividuell/`, deploy the release from a lib
+checkout at its tag (the lib's README, "Releasing"), bump `unividuell-auth.version` in `pom.xml`, and
+commit. A release is never redeployed under the same version: Maven keeps the first copy it
+resolved in `~/.m2` and in CI's cache.

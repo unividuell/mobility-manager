@@ -18,10 +18,11 @@ import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
+import org.unividuell.auth.test.signedInAs
 import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.user.signedInAs
+import org.unividuell.mobility.manager.user.principal
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -51,7 +52,7 @@ class FuelControllerIntegrationTest @Autowired constructor(
         sessionCookie = null
     }
 
-    private fun login(): RequestPostProcessor = signedInAs(user)
+    private fun login(): RequestPostProcessor = signedInAs(user.principal())
 
     @Test
     fun `GET root renders a four-slot draft with the date prefilled and no vehicle quick-entry`() {

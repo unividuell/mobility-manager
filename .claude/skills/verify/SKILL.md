@@ -38,6 +38,7 @@ A mutating request without the token answers 403.
 ## Gotchas
 
 - Anonymous requests must not create sessions (`Set-Cookie: SESSION=…`) — the 30s healthcheck once filled prod with ~88k empty 30-day sessions. Every response carries `Set-Cookie: XSRF-TOKEN=…`; that is the CSRF cookie, not a session.
+- An anonymous page GET also sets `Set-Cookie: REDIRECT_URI=…` — the page to return to after sign-in, kept in a cookie, not a session; every picker sign-in expires it (`Max-Age=0`).
 - Inspect session persistence directly: `sqlite3 data/mobility-manager.db "SELECT COUNT(*) FROM SPRING_SESSION;"`
 - The exact prod healthcheck: `bash -c 'exec 3<>/dev/tcp/127.0.0.1/18080 && printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 && grep -q UP <&3'`
 - The GitHub door only exists under the `production` profile; it cannot be driven locally.

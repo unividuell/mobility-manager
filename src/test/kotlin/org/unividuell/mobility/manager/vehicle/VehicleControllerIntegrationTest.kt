@@ -13,10 +13,11 @@ import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
+import org.unividuell.auth.test.signedInAs
 import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.user.signedInAs
+import org.unividuell.mobility.manager.user.principal
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -39,7 +40,7 @@ class VehicleControllerIntegrationTest @Autowired constructor(
         userId = user.id!!
     }
 
-    private fun login(): RequestPostProcessor = signedInAs(user)
+    private fun login(): RequestPostProcessor = signedInAs(user.principal())
 
     @Test
     fun `index shows the empty state, then the created vehicle`() {

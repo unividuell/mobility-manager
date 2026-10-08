@@ -1,5 +1,7 @@
 package org.unividuell.mobility.manager
 
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.BeforeEach
@@ -12,16 +14,16 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.unividuell.auth.test.TEST_CSRF_TOKEN
+import org.unividuell.auth.test.signedInAs
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.user.TEST_CSRF_TOKEN
 import org.unividuell.mobility.manager.user.principal
-import org.unividuell.mobility.manager.user.signedInAs
-import org.unividuell.mobility.manager.user.withCsrfToken
 
 /**
- * Where this server-rendered app turns the auth lib's single-page-app defaults back into
- * page navigation, and the CSRF protection the lib switches on.
+ * What `frontend: server-rendered` gives this app — redirects to /login, the page to return to,
+ * logout to /login — and the CSRF protection the lib switches on.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -61,6 +63,24 @@ class SecurityIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `an htmx request after the session has gone is not remembered as the page to return to`() {
+        // Replayed as a GET after the next sign-in, it would end on a 405.
+        val response = mockMvc.post("/fuel/value") {
+            header("HX-Request", "true")
+            header("Sec-Fetch-Mode", "cors")
+            param("value", "45")
+            with(withCsrfToken())
+        }.andReturn().response
+
+        response.getCookie("REDIRECT_URI") shouldBe null
+    }
+
+    @Test
+    fun `an anonymous page request is remembered as the page to return to`() {
+        mockMvc.get("/vehicles").andReturn().response.getCookie("REDIRECT_URI").shouldNotBeNull()
+    }
+
+    @Test
     fun `with the test login off, the sign-in starts at GitHub`() {
         mockMvc.get("/login/start").andExpect {
             status { isFound() }
@@ -70,7 +90,7 @@ class SecurityIntegrationTest @Autowired constructor(
 
     @Test
     fun `logout lands on the login page`() {
-        mockMvc.post("/logout") { with(signedInAs(user)) }.andExpect {
+        mockMvc.post("/logout") { with(signedInAs(user.principal())) }.andExpect {
             status { isFound() }
             redirectedUrl("/login")
         }
@@ -96,14 +116,14 @@ class SecurityIntegrationTest @Autowired constructor(
 
     @Test
     fun `a state-changing request with the token in the htmx header goes through`() {
-        mockMvc.post("/fuel/reset") { with(signedInAs(user)) }.andExpect {
+        mockMvc.post("/fuel/reset") { with(signedInAs(user.principal())) }.andExpect {
             status { isOk() }
         }
     }
 
     @Test
     fun `the header shows the signed-in user's name`() {
-        val body = mockMvc.get("/vehicles") { with(signedInAs(user)) }.andReturn().response.contentAsString
+        val body = mockMvc.get("/vehicles") { with(signedInAs(user.principal())) }.andReturn().response.contentAsString
 
         body shouldContain "The Octocat"
     }
@@ -118,7 +138,7 @@ class SecurityIntegrationTest @Autowired constructor(
     @Test
     fun `the htmx pages hand htmx the CSRF token as a request header`() {
         for (page in listOf("/", "/vehicles")) {
-            val body = mockMvc.get(page) { with(signedInAs(user)) }.andReturn().response.contentAsString
+            val body = mockMvc.get(page) { with(signedInAs(user.principal())) }.andReturn().response.contentAsString
 
             body shouldContain """hx-headers="{&quot;X-XSRF-TOKEN&quot;: &quot;$TEST_CSRF_TOKEN&quot;}""""
         }
@@ -126,7 +146,7 @@ class SecurityIntegrationTest @Autowired constructor(
 
     @Test
     fun `the logout form carries the CSRF token`() {
-        val body = mockMvc.get("/vehicles") { with(signedInAs(user)) }.andReturn().response.contentAsString
+        val body = mockMvc.get("/vehicles") { with(signedInAs(user.principal())) }.andReturn().response.contentAsString
 
         body shouldContain """<input type="hidden" name="_csrf" value="$TEST_CSRF_TOKEN"/>"""
     }

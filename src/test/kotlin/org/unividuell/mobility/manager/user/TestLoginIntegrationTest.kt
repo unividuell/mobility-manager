@@ -11,6 +11,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.mobility.manager.DatabaseCleaner
 
 /**
@@ -57,5 +58,16 @@ class TestLoginIntegrationTest @Autowired constructor(
 
         val session = Cookie("SESSION", signIn.getCookie("SESSION")!!.value)
         mockMvc.get("/vehicles") { cookie(session) }.andReturn().response.status shouldBe 200
+    }
+
+    @Test
+    fun `the picker returns to the page that sent the visitor to the login page`() {
+        val remembered = mockMvc.get("/vehicles").andReturn().response.getCookie("REDIRECT_URI")!!
+
+        mockMvc.post("/login/test/as") {
+            cookie(remembered)
+            param("login", "Fry")
+            with(withCsrfToken())
+        }.andReturn().response.redirectedUrl shouldBe "/vehicles"
     }
 }

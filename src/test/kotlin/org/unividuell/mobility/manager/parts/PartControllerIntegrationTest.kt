@@ -13,11 +13,12 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
+import org.unividuell.auth.test.signedInAs
 import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
 import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
-import org.unividuell.mobility.manager.user.signedInAs
+import org.unividuell.mobility.manager.user.principal
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -47,7 +48,7 @@ class PartControllerIntegrationTest @Autowired constructor(
         vehicleId = vehicleService.create(userId, "Moped", "#06b6d4", hasTripMeter = false).id!!
     }
 
-    private fun login(): RequestPostProcessor = signedInAs(user)
+    private fun login(): RequestPostProcessor = signedInAs(user.principal())
 
     private fun createClutch(): Part = partService.create(
         userId, vehicleId, name = "Kupplung Sachs", details = "verstärkt", priceEuro = 250,
