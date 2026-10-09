@@ -3,7 +3,6 @@ package org.unividuell.mobility.manager.vehicle
 import jakarta.servlet.http.HttpSession
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
+import org.unividuell.auth.AuthPrincipal
 import org.unividuell.mobility.manager.fuel.FuelService
 import org.unividuell.mobility.manager.user.CurrentUser
 import java.time.LocalDate
@@ -27,7 +27,7 @@ class VehicleController(
 ) {
 
     @GetMapping
-    fun index(@AuthenticationPrincipal principal: OAuth2User, model: Model): String {
+    fun index(@AuthenticationPrincipal principal: AuthPrincipal, model: Model): String {
         val userId = currentUser.require(principal).id!!
         val vehicles = service.listFor(userId)
         model.addAttribute("vehicles", vehicles)
@@ -43,7 +43,7 @@ class VehicleController(
 
     @PostMapping
     fun create(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @RequestParam name: String,
         @RequestParam color: String,
         @RequestParam(defaultValue = "false") hasTripMeter: Boolean,
@@ -55,7 +55,7 @@ class VehicleController(
 
     @PostMapping("/{id}/select")
     fun select(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable id: Long,
         session: HttpSession,
     ): String {
@@ -67,7 +67,7 @@ class VehicleController(
 
     @GetMapping("/{id}/edit")
     fun editForm(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable id: Long,
         model: Model,
     ): String {
@@ -79,7 +79,7 @@ class VehicleController(
 
     @PostMapping("/{id}")
     fun update(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable id: Long,
         @RequestParam name: String,
         @RequestParam color: String,
@@ -95,7 +95,7 @@ class VehicleController(
     @DeleteMapping("/{id}")
     @ResponseBody
     fun delete(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable id: Long,
     ): String {
         val userId = currentUser.require(principal).id!!

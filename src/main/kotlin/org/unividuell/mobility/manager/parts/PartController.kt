@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.server.ResponseStatusException
+import org.unividuell.auth.AuthPrincipal
 import org.unividuell.mobility.manager.fuel.FuelService
 import org.unividuell.mobility.manager.user.CurrentUser
 import org.unividuell.mobility.manager.vehicle.VehicleService
@@ -29,7 +29,7 @@ class PartController(
 
     @GetMapping
     fun list(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         model: Model,
     ): String {
@@ -42,7 +42,7 @@ class PartController(
 
     @GetMapping("/new")
     fun newForm(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @RequestParam(required = false) replaces: Long?,
         model: Model,
@@ -65,7 +65,7 @@ class PartController(
 
     @PostMapping
     fun create(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @RequestParam name: String,
         @RequestParam(required = false) details: String?,
@@ -89,7 +89,7 @@ class PartController(
 
     @GetMapping("/{id}/edit")
     fun editForm(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @PathVariable id: Long,
         model: Model,
@@ -110,7 +110,7 @@ class PartController(
 
     @PostMapping("/{id}")
     fun update(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @PathVariable id: Long,
         @RequestParam name: String,
@@ -132,7 +132,7 @@ class PartController(
 
     @PostMapping("/{id}/delete")
     fun delete(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @PathVariable id: Long,
     ): String {
@@ -143,7 +143,7 @@ class PartController(
 
     @PostMapping("/{partId}/checkpoints/{checkpointId}/done")
     fun checkOff(
-        @AuthenticationPrincipal principal: OAuth2User,
+        @AuthenticationPrincipal principal: AuthPrincipal,
         @PathVariable vehicleId: Long,
         @PathVariable partId: Long,
         @PathVariable checkpointId: Long,

@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-<html lang="de"
-      xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
 <body>
 
 <!--
@@ -31,8 +29,8 @@
               text-xs font-bold tabular-nums text-white">1</a>
     <div class="flex items-center gap-3">
         <a th:if="${home}" href="/" class="text-zinc-500 transition hover:text-zinc-200">Tanken</a>
-        <span class="text-zinc-500" sec:authentication="principal.attributes['displayName']">Fahrer</span>
-        <form action="/logout" method="post">
+        <span class="text-zinc-500" th:text="${currentUserName}">Fahrer</span>
+        <form th:action="@{/logout}" method="post">
             <button type="submit"
                     class="rounded-lg px-2 py-1 text-zinc-500 transition hover:text-zinc-200
                            focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600">

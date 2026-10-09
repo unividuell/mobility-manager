@@ -1,6 +1,6 @@
-# Test-only overrides; everything else (datasource driver, flyway, thymeleaf,
-# the GitHub OAuth2 client registration with its placeholder creds) is inherited
-# from the base src/main/resources/application.yaml. Activated via @ActiveProfiles("test").
+# Test-only overrides; everything else (datasource driver, flyway, thymeleaf) is
+# inherited from the base src/main/resources/application.yaml. Activated via
+# @ActiveProfiles("test").
 spring:
   datasource:
     # SQLite in-memory with shared cache so all Hikari connections see one DB
@@ -12,3 +12,19 @@ spring:
     url: jdbc:sqlite:file::memory:?cache=shared&date_class=text&date_string_format=yyyy-MM-dd&foreign_keys=true
     hikari:
       maximum-pool-size: 5
+  security:
+    oauth2:
+      client:
+        registration:
+          # production's door, with dummy credentials: the auth lib refuses to start
+          # without any way in, and the test login below is off
+          github:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: read:user
+
+unividuell:
+  auth:
+    test-login:
+      # an active profile would demand a key; tests sign in through MockMvc instead
+      enabled: false

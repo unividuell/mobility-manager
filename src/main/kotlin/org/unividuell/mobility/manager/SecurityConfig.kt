@@ -3,48 +3,26 @@ package org.unividuell.mobility.manager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.web.SecurityFilterChain
-import org.springframework.security.web.savedrequest.CookieRequestCache
-import org.unividuell.mobility.manager.user.GithubOAuth2UserService
 
+/**
+ * Sign-in, CSRF, logout and the redirects to /login come from the auth lib
+ * (org.unividuell:auth-spring-boot-starter, `frontend: server-rendered` in application.yaml),
+ * whose rules run before these.
+ */
 @Configuration
-@EnableWebSecurity
-class SecurityConfig(
-    private val githubOAuth2UserService: GithubOAuth2UserService,
-) {
+class SecurityConfig {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http {
             authorizeHttpRequests {
-                authorize("/login", permitAll)
-                authorize("/error", permitAll)
                 // health probe for the container/orchestrator; shows only
                 // {"status":"UP"} (details default to "never"), no secrets.
                 authorize("/actuator/health", permitAll)
                 authorize(anyRequest, authenticated)
             }
-            oauth2Login {
-                loginPage = "/login"
-                userInfoEndpoint {
-                    userService = githubOAuth2UserService
-                }
-            }
-            logout {
-                logoutSuccessUrl = "/login"
-            }
-            requestCache {
-                // keep the deep-link-after-login redirect in a cookie instead of the
-                // session — anonymous hits on protected routes (bots, crawlers) must
-                // not persist a session to SQLite just for the 302 to /login.
-                requestCache = CookieRequestCache()
-            }
-            // htmx POSTs don't carry a CSRF token; kept disabled deliberately.
-            csrf { disable() }
-            formLogin { disable() }
-            httpBasic { disable() }
         }
         return http.build()
     }

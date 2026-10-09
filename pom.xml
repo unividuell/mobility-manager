@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.6</version>
+		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.unividuell</groupId>
@@ -28,12 +28,24 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
-		<!-- 2.3.0 is the first release with JVM target 25 support -->
-		<kotlin.version>2.3.0</kotlin.version>
-		<spring-modulith.version>2.0.6</spring-modulith.version>
+		<!-- 2.3.0 was the first release with JVM target 25 support; 2.4.10 matches the auth lib -->
+		<kotlin.version>2.4.10</kotlin.version>
+		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<mockk.version>1.13.13</mockk.version>
 		<kotest.version>5.9.1</kotest.version>
+		<!-- Ours, from maven-repo/: not on Maven Central (see README, "Auth lib"). -->
+		<unividuell-auth.version>0.3.0</unividuell-auth.version>
 	</properties>
+	<repositories>
+		<repository>
+			<id>unividuell-local</id>
+			<url>file://${project.basedir}/maven-repo</url>
+			<!-- Only matters while the app takes a lib -SNAPSHOT: a redeployed snapshot must win over the copy in ~/.m2 and in CI's Maven cache. -->
+			<snapshots>
+				<updatePolicy>always</updatePolicy>
+			</snapshots>
+		</repository>
+	</repositories>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -52,8 +64,9 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+			<groupId>org.unividuell</groupId>
+			<artifactId>auth-spring-boot-starter</artifactId>
+			<version>${unividuell-auth.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -90,11 +103,6 @@
 		     needed. -->
 
 		<dependency>
-			<groupId>org.thymeleaf.extras</groupId>
-			<artifactId>thymeleaf-extras-springsecurity6</artifactId>
-		</dependency>
-
-		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
 			<scope>runtime</scope>
@@ -107,7 +115,8 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
-			<artifactId>spring-modulith-observability</artifactId>
+			<!-- since 2.1 the plain artifact is a pom aggregator; the code lives in -core -->
+			<artifactId>spring-modulith-observability-core</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -148,6 +157,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.unividuell</groupId>
+			<artifactId>auth-spring-boot-starter-test</artifactId>
+			<version>${unividuell-auth.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

@@ -14,7 +14,8 @@ import org.springframework.test.web.servlet.get
  * Anonymous requests must never create (and persist) a session — otherwise the
  * SQLite store fills up with empty 30-day sessions: the container healthcheck polls
  * /actuator/health every 30s without cookies, and bots hit protected routes whose
- * 302 to /login must not stash a saved request in a session (CookieRequestCache).
+ * 302 to /login must not stash a saved request in a session (the auth lib keeps the
+ * page to return to in a cookie).
  */
 @SpringBootTest
 @AutoConfigureMockMvc

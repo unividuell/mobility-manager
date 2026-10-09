@@ -8,15 +8,17 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
+import org.unividuell.auth.test.signedInAs
 import org.unividuell.mobility.manager.DatabaseCleaner
 import org.unividuell.mobility.manager.fuel.FuelEntryRepository
+import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
+import org.unividuell.mobility.manager.user.principal
 import org.unividuell.mobility.manager.vehicle.VehicleService
 import java.time.LocalDate
 
@@ -34,18 +36,19 @@ class PartControllerIntegrationTest @Autowired constructor(
     private val db: DatabaseCleaner,
 ) {
 
-    private val githubId = 4711L
+    private lateinit var user: AppUser
     private var userId = 0L
     private var vehicleId = 0L
 
     @BeforeEach
     fun setUp() {
         db.clean()
-        userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
+        user = users.upsert(provider = "github", subject = "4711", login = "octocat", name = "The Octocat")
+        userId = user.id!!
         vehicleId = vehicleService.create(userId, "Moped", "#06b6d4", hasTripMeter = false).id!!
     }
 
-    private fun login(): RequestPostProcessor = oauth2Login().attributes { it["id"] = githubId }
+    private fun login(): RequestPostProcessor = signedInAs(user.principal())
 
     private fun createClutch(): Part = partService.create(
         userId, vehicleId, name = "Kupplung Sachs", details = "verstärkt", priceEuro = 250,
@@ -100,7 +103,7 @@ class PartControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `parts page 404s for a foreign vehicle`() {
-        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val strangerId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreign = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
 
         mockMvc.get("/vehicles/$foreign/parts") { with(login()) }
@@ -220,7 +223,7 @@ class PartControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `form POSTs 404 for a foreign vehicle`() {
-        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val strangerId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreign = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
 
         mockMvc.post("/vehicles/$foreign/parts") {
@@ -267,7 +270,7 @@ class PartControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `checking off a foreign vehicle's checkpoint 404s`() {
-        val strangerId = users.upsert(2222L, login = "stranger", displayName = "Stranger").id!!
+        val strangerId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreignVehicle = vehicleService.create(strangerId, "Fremd", "#f43f5e").id!!
         val foreignPart = partService.create(
             strangerId, foreignVehicle, name = "Fremdteil", details = null, priceEuro = null,

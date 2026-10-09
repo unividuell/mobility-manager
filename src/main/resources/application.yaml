@@ -1,14 +1,6 @@
 spring:
   application:
     name: mobility-manager
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: Ov23lieWH11YI3qPP5Og
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope: read:user
   datasource:
     # date_class=text + an ISO date format make the driver store java.time
     # dates (FuelEntry.date) as readable yyyy-MM-dd TEXT instead of epoch millis.
@@ -37,3 +29,10 @@ server:
       # long timeout so "stay logged in" is meaningful (the persisted session
       # otherwise still expires after 30 min of inactivity)
       timeout: 30d
+
+unividuell:
+  auth:
+    # Thymeleaf + htmx: anonymous requests and logout land on /login (login.html), whose button
+    # starts the sign-in at /login/start — the picker locally, GitHub in production.
+    frontend: server-rendered
+    login-page: /login

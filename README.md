@@ -1,7 +1,8 @@
 # mobility-manager
 
 Spring Boot / Kotlin app for tracking car fuel costs with a distraction-free UI.
-Login is via GitHub OAuth2; data is stored in a local SQLite file.
+Sign-in comes from the auth lib (see [Auth lib](#auth-lib)): the organisation's GitHub App in
+production, a test-user picker locally. Data is stored in a local SQLite file.
 
 ## Deployment
 
@@ -47,9 +48,28 @@ echo "$GITHUB_TOKEN" | docker login ghcr.io -u <github-username> --password-stdi
 mkdir -p /opt/unividuell/mobility-manager && cd /opt/unividuell/mobility-manager
 curl -fsSL https://raw.githubusercontent.com/unividuell/mobility-manager/main/deploy/update.sh -o update.sh && chmod +x update.sh
 ./update.sh          # fetches compose + .env template, then stops
-# edit .env: MOBILITY_MANAGER_GITHUB_CLIENT_SECRET
+# edit .env: MOBILITY_MANAGER_GITHUB_CLIENT_SECRET (the GitHub App's client secret)
 ./update.sh          # ensures edge net, pulls, starts
 ```
 
-> The shared edge-caddy stack must be up (it owns 80/443 + TLS). The GitHub OAuth app's
-> callback URL must be `https://mobility.unividuell.org/login/oauth2/code/github`.
+> The shared edge-caddy stack must be up (it owns 80/443 + TLS). The organisation's GitHub App
+> (client ID in `application-production.yaml`) must list the callback URL
+> `https://mobility.unividuell.org/login/oauth2/code/github`.
+
+## Auth lib
+
+Sign-in, CSRF, logout and the redirects to `/login` come from
+`org.unividuell:auth-spring-boot-starter` (`/opt/unividuell/projects/auth-spring-boot-starter`),
+configured as `frontend: server-rendered` with `login-page: /login`. It is not on Maven Central: the
+build reads the release from `maven-repo/`, which is committed — the parent POM, the starter, and
+`auth-spring-boot-starter-test`, whose `signedInAs` and `withCsrfToken` the tests use. The app
+provides the lib's one hook, `AccountProvisioner` (`AppUserService`).
+
+| | locally (no profile) | tests (profile `test`) | production |
+|---|---|---|---|
+| `/login/start` | test-user picker | GitHub | GitHub |
+
+To move to a new release: delete `maven-repo/org/unividuell/`, deploy the release from a lib
+checkout at its tag (the lib's README, "Releasing"), bump `unividuell-auth.version` in `pom.xml`, and
+commit. A release is never redeployed under the same version: Maven keeps the first copy it
+resolved in `~/.m2` and in CI's cache.

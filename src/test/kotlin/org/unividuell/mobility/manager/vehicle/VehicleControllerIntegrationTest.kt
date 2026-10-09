@@ -7,15 +7,17 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
+import org.unividuell.auth.test.signedInAs
 import org.unividuell.mobility.manager.DatabaseCleaner
+import org.unividuell.mobility.manager.user.AppUser
 import org.unividuell.mobility.manager.user.AppUserService
+import org.unividuell.mobility.manager.user.principal
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -28,16 +30,17 @@ class VehicleControllerIntegrationTest @Autowired constructor(
     private val db: DatabaseCleaner,
 ) {
 
-    private val githubId = 4711L
+    private lateinit var user: AppUser
     private var userId = 0L
 
     @BeforeEach
     fun setUp() {
         db.clean()
-        userId = users.upsert(githubId, login = "octocat", displayName = "The Octocat").id!!
+        user = users.upsert(provider = "github", subject = "4711", login = "octocat", name = "The Octocat")
+        userId = user.id!!
     }
 
-    private fun login(): RequestPostProcessor = oauth2Login().attributes { it["id"] = githubId }
+    private fun login(): RequestPostProcessor = signedInAs(user.principal())
 
     @Test
     fun `index shows the empty state, then the created vehicle`() {
@@ -107,7 +110,7 @@ class VehicleControllerIntegrationTest @Autowired constructor(
 
     @Test
     fun `select rejects a vehicle the user does not manage`() {
-        val otherUserId = users.upsert(githubId = 2222L, login = "stranger", displayName = "Stranger").id!!
+        val otherUserId = users.upsert(provider = "github", subject = "2222", login = "stranger", name = "Stranger").id!!
         val foreign = service.create(otherUserId, "Fremder", "#f43f5e").id!!
 
         mockMvc.post("/vehicles/$foreign/select") { with(login()) }
