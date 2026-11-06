@@ -5,8 +5,7 @@ services:
     image: ghcr.io/unividuell/mobility-manager:latest
     container_name: mobility-manager
     restart: unless-stopped
-    # Without a limit the buildpack's memory calculator sizes the heap from the whole host
-    # (-Xmx ~20 GB). 1g leaves ~400 MB heap; peak use was 268 MB.
+    # Without a limit the buildpack's memory calculator sizes the heap from the whole host.
     mem_limit: 1g
     environment:
       SPRING_PROFILES_ACTIVE: production
