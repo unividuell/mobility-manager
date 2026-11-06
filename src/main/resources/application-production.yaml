@@ -30,3 +30,28 @@ server:
   # X-Forwarded-Proto/Host headers so Spring reconstructs https URLs — otherwise
   # the OAuth2 redirect_uri is built as http:// and GitHub login fails.
   forward-headers-strategy: framework
+
+logging:
+  structured:
+    format:
+      # One JSON object per line, stack trace included: the collector reads it from docker's log file.
+      console: ecs
+
+# Metrics and traces go to edge-caddy's edge-lgtm over the shared `monitoring` network
+# (deploy/compose.prod.yaml). Unreachable, the exporters only log a warning and drop the batch.
+management:
+  opentelemetry:
+    resource-attributes:
+      "[deployment.environment.name]": production
+    tracing:
+      export:
+        otlp:
+          endpoint: http://edge-lgtm:4318/v1/traces
+  tracing:
+    export:
+      enabled: true
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        url: http://edge-lgtm:4318/v1/metrics

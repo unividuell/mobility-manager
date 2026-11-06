@@ -14,6 +14,8 @@ services:
       - ./data:/data
     networks:
       - edge
+      # edge-caddy's edge-lgtm receives metrics and traces here (OTLP).
+      - monitoring
     healthcheck:
       test: ['CMD', 'bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf ''GET /actuator/health HTTP/1.0\r\n\r\n'' >&3 && grep -q UP <&3']
       interval: 30s
@@ -23,4 +25,6 @@ services:
 
 networks:
   edge:
+    external: true
+  monitoring:
     external: true

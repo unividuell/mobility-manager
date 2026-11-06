@@ -24,6 +24,10 @@ Deployment lives in `deploy/` (`compose.prod.yaml`, `.env.example`, `update.sh`)
 runs behind the shared **edge-caddy** (TLS + `mobility.unividuell.org` routing); it publishes
 **no host port** and joins the external `edge` network as `container_name: mobility-manager`.
 
+It also joins the external `monitoring` network: metrics and traces go via OTLP to edge-caddy's
+`edge-lgtm` (Grafana at `monitoring.unividuell.org`). Logs reach it from docker's log file;
+production logs ECS JSON for that. Locally nothing is exported.
+
 Server dir: **`/opt/unividuell/mobility-manager/`**. The SQLite DB lives under `./data/`
 (bind-mounted to `/data`), so it survives image/container replacement.
 
