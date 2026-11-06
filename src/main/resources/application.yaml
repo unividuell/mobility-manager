@@ -30,6 +30,37 @@ server:
       # otherwise still expires after 30 min of inactivity)
       timeout: 30d
 
+# Metrics and traces go out via OTLP only in production (edge-caddy's edge-lgtm).
+# Locally there is no collector: export stays off.
+management:
+  opentelemetry:
+    # One Grafana serves several projects: these tell them apart.
+    resource-attributes:
+      "[service.namespace]": mobility-manager
+      "[deployment.environment.name]": local
+  logging:
+    export:
+      otlp:
+        # Logs travel via the container's stdout, read by the collector, not via OTLP.
+        enabled: false
+  tracing:
+    export:
+      enabled: false
+    sampling:
+      # Every request; the traffic is tiny.
+      probability: 1.0
+  otlp:
+    metrics:
+      export:
+        enabled: false
+        # Default 60 s makes the dashboard feel dead while clicking through the app.
+        step: 10s
+  metrics:
+    distribution:
+      # p95 latency per endpoint in Grafana.
+      percentiles-histogram:
+        http.server.requests: true
+
 unividuell:
   auth:
     # Thymeleaf + htmx: anonymous requests and logout land on /login (login.html), whose button

@@ -15,6 +15,7 @@ fi
 # SQLite data dir must be owned by the buildpack run user (uid 1002, gid 1000)
 mkdir -p data
 docker network create edge 2>/dev/null || true
+docker network create monitoring 2>/dev/null || true
 docker compose --env-file .env -f compose.prod.yaml pull
 docker compose --env-file .env -f compose.prod.yaml up -d
 docker image prune -f
