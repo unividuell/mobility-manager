@@ -25,6 +25,34 @@ services:
       retries: 3
       start_period: 60s
 
+  # Daily consistent snapshot of the SQLite DB into ./backups, kept 7 days. edge-caddy's
+  # backup mirror pulls it from there to the home server.
+  db-backup:
+    image: alpine:3.22
+    restart: unless-stopped
+    volumes:
+      - ./data:/data:ro
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        apk add -q --no-cache sqlite
+
+        # Compose reads a single dollar sign as its own interpolation, so each one here is doubled.
+        while true; do
+          # sqlite3 would create an empty DB where none exists yet.
+          if [ -f /data/mobility-manager.db ]; then
+            # VACUUM INTO copies within one read transaction: consistent while the app writes.
+            # Written beside the name, then renamed, so no half-written file looks like a backup.
+            out=/backups/mobility-manager-$$(date +%Y%m%d-%H%M%S).db
+            sqlite3 -readonly -cmd ".timeout 10000" /data/mobility-manager.db "VACUUM INTO '$$out.part'"
+            mv "$$out.part" "$$out"
+            find /backups -name 'mobility-manager-*.db' -mtime +7 -delete
+          fi
+          sleep 86400
+        done
+
 networks:
   edge:
     external: true
