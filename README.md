@@ -31,6 +31,9 @@ production logs ECS JSON for that. Locally nothing is exported.
 Server dir: **`/opt/unividuell/mobility-manager/`**. The SQLite DB lives under `./data/`
 (bind-mounted to `/data`), so it survives image/container replacement.
 
+The `db-backup` container writes a consistent snapshot (`VACUUM INTO`) to `./backups/`
+daily and keeps 7 days. edge-caddy's backup mirror copies that dir to the home server.
+
 **One-time host setup.** The buildpack run image runs as the non-root `cnb` user
 (uid `1002`, gid `1000`), so the data dir must be owned by that uid — otherwise the app
 crashes on startup with `SQLITE_CANTOPEN`:
